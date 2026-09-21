@@ -1,10 +1,23 @@
 # Utviklingsverktøy
 .idea/
 .vscode/
+
 # Lenke med info om .gitignore: https://www.w3schools.com/git/git_ignore.asp
+
 #Ignorerer mapper med temp i navnet
 temp/
+*.tmp
+*.temp
+
 #Ignorerer filer med log i navnet
 *.log
+
 #Gjør untak for important.log filer
 !important.log
+
+# Redusere redundans
+node_modules/
+
+# hemeligheter
+.env.local
+.env
