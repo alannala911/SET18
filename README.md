@@ -1,5 +1,5 @@
 # Østfold husflidslag
-Vi utvikler en ny og mer brukervennlig nettside for Østfold Husflidslag.
+Vi utvikler en mer brukervennlig nettside for Østfold Husflidslag.
 
 ## Team
 - Alan Qahraman Ahmed
