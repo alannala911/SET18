@@ -1,4 +1,4 @@
-
+# Lenke med info om .gitignore: https://www.w3schools.com/git/git_ignore.asp
 #Ignorerer mapper med temp i navnet
 temp/
 #Ignorerer filer med log i navnet
