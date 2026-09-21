@@ -8,8 +8,8 @@ Vi utvikler en ny og mer brukervennlig nettside for Østfold Husflidslag.
 - Kristoffer Sjøboden
 - Tim Emil Strudahl Malmo
 
-## Kjøring
+## Installasjon
 - Placeholder
 
-## Installasjon
+## Kjøring
 - Placeholder
