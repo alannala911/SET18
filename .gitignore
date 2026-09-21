@@ -1,1 +1,7 @@
 
+#Ignorerer mapper med temp i navnet
+temp/
+#Ignorerer filer med log i navnet
+*.log
+#Gjør untak for important.log filer
+!important.log
