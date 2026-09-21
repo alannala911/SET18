@@ -18,6 +18,6 @@ temp/
 # Redusere redundans
 node_modules/
 
-# hemeligheter
+# hemeligheter / sensitiv informasjon
 .env.local
 .env
