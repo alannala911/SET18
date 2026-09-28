@@ -15,5 +15,4 @@ Vi utvikler en mer brukervennlig nettside for Østfold Husflidslag.
 - Placeholder
 
 ## Ressurser
-- Github branch organisering:
--   https://dev.to/hardkoded/how-to-organize-your-git-branches-4dci
+- Github branch organisering: https://dev.to/hardkoded/how-to-organize-your-git-branches-4dci
