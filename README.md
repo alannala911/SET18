@@ -13,3 +13,7 @@ Vi utvikler en mer brukervennlig nettside for Østfold Husflidslag.
 
 ## Kjøring
 - Placeholder
+
+## Ressurser
+- Github branch organisering:
+-   https://dev.to/hardkoded/how-to-organize-your-git-branches-4dci
