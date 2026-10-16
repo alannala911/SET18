@@ -13,7 +13,7 @@ function App() {
             Husflidslag
           </span>
         </a>
-
+        
         <nav className="navigation" aria-label="Hovedmeny">
           <a href="#kurs">Kurs</a>
           <a href="#aktiviteter">Aktiviteter</a>
