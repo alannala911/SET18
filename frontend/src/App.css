@@ -1,218 +1,407 @@
-.app {
-  min-height: 100vh;
+/* =========================
+   GRUNNLEGGENDE FARGER
+========================= */
+
+:root {
+  --red: #c6284f;
+  --dark-red: #a90000;
+  --light-gray: #eeeeee;
+  --text: #111111;
 }
 
-.header {
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* =========================
+   TOPPMENY
+========================= */
+
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 32px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px 32px;
+  min-height: 145px;
+  padding: 25px 5%;
+  background: white;
 }
 
-.logo {
+.brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #852b3b;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.1;
+  gap: 24px;
+  color: black;
+  font-size: 27px;
+  line-height: 1.35;
   text-decoration: none;
   text-transform: uppercase;
 }
 
-.logoMark {
-  font-size: 34px;
+.brand-symbol {
+  color: var(--red);
+  font-size: 70px;
 }
 
-.navigation {
+.top-links {
   display: flex;
-  gap: 32px;
+  align-items: center;
+  gap: 55px;
 }
 
-.navigation a {
-  color: #3d3d3d;
-  font-size: 15px;
-  font-weight: 500;
+.top-links a {
+  color: black;
+  font-size: 27px;
   text-decoration: none;
 }
 
-.navigation a:hover {
-  color: #852b3b;
+.top-links a:hover {
+  color: var(--red);
 }
 
-.memberButton {
-  padding: 11px 18px;
-  border: 1px solid #852b3b;
-  border-radius: 999px;
-  color: #852b3b;
-  background: transparent;
-  cursor: pointer;
+/* =========================
+   SIDEMENY OG HOVEDINNHOLD
+========================= */
+
+.page-layout {
+  display: grid;
+  grid-template-columns: 285px 1fr;
+  min-height: 750px;
 }
 
-.memberButton:hover {
-  color: white;
-  background: #852b3b;
+.sidebar {
+  padding: 40px 25px;
+  background: var(--light-gray);
 }
+
+.side-links {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.side-links a {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 20px;
+  color: black;
+  border-radius: 10px;
+  font-size: 25px;
+  text-decoration: none;
+}
+
+.side-links a:hover {
+  color: var(--dark-red);
+  background: #f3c2ad;
+}
+
+.side-links .active {
+  color: var(--dark-red);
+  background: #efa887;
+}
+
+.side-links span {
+  width: 35px;
+  text-align: center;
+}
+
+.sidebar h2 {
+  margin-top: 35px;
+  padding-top: 15px;
+  border-top: 2px dashed #777777;
+  text-align: center;
+  font-size: 19px;
+}
+
+.sidebar > a {
+  display: inline-block;
+  margin: 8px;
+  font-size: 25px;
+}
+
+.page-layout > main {
+  width: 100%;
+  padding: 0 14px 30px;
+  overflow: hidden;
+}
+
+/* =========================
+   HOVEDBILDE
+========================= */
 
 .hero {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  max-width: 1200px;
-  min-height: 520px;
-  margin: 0 auto;
-  padding: 110px 32px;
-  border-radius: 28px;
-  text-align: center;
+  align-items: flex-start;
+  justify-content: center;
+
+  min-height: 375px;
+  padding: 50px 65px;
+
+  color: white;
+  text-align: left;
+
   background:
-    radial-gradient(circle at top left, #f0d7d8, transparent 42%),
-    radial-gradient(circle at bottom right, #dce8dc, transparent 40%),
-    #eee8dd;
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.82),
+      rgba(0, 0, 0, 0.05)
+    ),
+    url("./assets/bilder til nettsiden/hero-husflid.jpg");
+
+  background-position: center;
+  background-size: cover;
 }
 
 .eyebrow {
-  margin: 0 0 20px;
-  color: #852b3b;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.hero h1 {
-  max-width: 760px;
-  margin: 0;
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: clamp(42px, 7vw, 76px);
-  line-height: 1.05;
-}
-
-.heroText {
-  max-width: 620px;
-  margin: 24px 0 0;
-  color: #555;
-  font-size: 18px;
-  line-height: 1.7;
-}
-
-.heroButtons {
-  display: flex;
-  gap: 14px;
-  margin-top: 34px;
-}
-
-.primaryButton,
-.secondaryButton {
-  padding: 14px 22px;
-  border-radius: 999px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.primaryButton {
-  color: white;
-  background: #852b3b;
-}
-
-.secondaryButton {
-  border: 1px solid #b8afa2;
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.contentGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 70px 32px;
-}
-
-.card {
-  padding: 32px;
-  border: 1px solid #ded9cf;
-  border-radius: 20px;
-  background: #fff;
-}
-
-.cardLabel {
-  margin: 0 0 14px;
-  color: #852b3b;
-  font-size: 12px;
-  font-weight: 700;
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: bold;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
-.card h2 {
-  margin: 0;
-  font-family: "Playfair Display", Georgia, serif;
-  font-size: 32px;
+.hero h1 {
+  margin: 0 0 12px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(42px, 5vw, 62px);
+  line-height: 1.05;
 }
 
-.card p {
-  color: #666;
-  line-height: 1.7;
+.hero p {
+  max-width: 650px;
+  margin: 0 0 22px;
+  font-size: 21px;
+  line-height: 1.4;
 }
 
-.card a {
-  color: #852b3b;
-  font-weight: 600;
+.hero a {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+
+  padding: 10px 16px;
+  border-radius: 8px;
+
+  color: white;
+  background: #c9453e;
+
+  font-size: 18px;
   text-decoration: none;
 }
 
+.hero a:hover {
+  background: #a92f2a;
+}
+
+/* =========================
+   INFORMASJONSKORT
+========================= */
+
+.cards,
+.content-grid,
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 55px;
+  padding: 38px 15px 25px;
+}
+
+.card {
+  min-height: 300px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f8e3e1;
+}
+
+.card:nth-child(2) {
+  background: #bcefc4;
+}
+
+.card:nth-child(3) {
+  background: #dceaf7;
+}
+
+.card:nth-child(4) {
+  background: #efc8ed;
+}
+
+/* Sirklene øverst på kortene */
+
+.card > span:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 60px;
+  height: 60px;
+
+  color: white;
+  border-radius: 50%;
+  background: #c4443d;
+  font-size: 27px;
+}
+
+.card:nth-child(2) > span:first-child {
+  background: #145e27;
+}
+
+.card:nth-child(3) > span:first-child {
+  background: #082d70;
+}
+
+.card:nth-child(4) > span:first-child {
+  background: #7c2bb3;
+}
+
+.card h2 {
+  margin: 20px 0 12px;
+  font-size: 27px;
+}
+
+.card p {
+  min-height: 85px;
+  font-size: 19px;
+  line-height: 1.4;
+}
+
+.card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+
+  color: #b50000;
+  font-size: 19px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.card:nth-child(2) a {
+  color: #28661f;
+}
+
+.card:nth-child(3) a {
+  color: #082d70;
+}
+
+.card:nth-child(4) a {
+  color: #7c2bb3;
+}
+
+/* =========================
+   BUNNTEKST
+========================= */
+
 .footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 30px 32px;
-  border-top: 1px solid #ded9cf;
-  color: #666;
-  font-size: 14px;
+  gap: 30px;
+
+  min-height: 125px;
+  padding: 25px 5%;
+
+  border-top: 2px solid black;
+  background: #f5f5f5;
 }
 
 .footer a {
-  color: #852b3b;
+  color: black;
+  text-decoration: none;
 }
 
-@media (max-width: 800px) {
-  .header {
-    flex-wrap: wrap;
-    padding: 20px;
+/* =========================
+   NETTBRETT
+========================= */
+
+@media (max-width: 950px) {
+  .topbar {
+    flex-direction: column;
+    gap: 25px;
   }
 
-  .navigation {
-    order: 3;
-    width: 100%;
-    gap: 18px;
-    overflow-x: auto;
+  .top-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 22px;
+  }
+
+  .page-layout {
+    display: block;
+  }
+
+  .sidebar {
+    padding: 15px;
+  }
+
+  .side-links {
+    flex-flow: row wrap;
+    justify-content: center;
+  }
+
+  .side-links a {
+    font-size: 18px;
+  }
+
+  .sidebar h2,
+  .sidebar > a {
+    display: none;
+  }
+
+  .cards,
+  .content-grid,
+  .contentGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+/* =========================
+   MOBIL
+========================= */
+
+@media (max-width: 600px) {
+  .brand {
+    font-size: 20px;
+  }
+
+  .brand-symbol {
+    font-size: 50px;
+  }
+
+  .top-links a {
+    font-size: 18px;
   }
 
   .hero {
-    min-height: 460px;
-    margin: 0 16px;
-    padding: 80px 24px;
+    min-height: 420px;
+    padding: 40px 25px;
   }
 
-  .heroButtons {
-    flex-direction: column;
-    width: 100%;
-    max-width: 280px;
+  .hero h1 {
+    font-size: 40px;
   }
 
+  .hero p {
+    font-size: 18px;
+  }
+
+  .cards,
+  .content-grid,
   .contentGrid {
     grid-template-columns: 1fr;
-    padding: 50px 20px;
   }
 
   .footer {
     flex-direction: column;
-    gap: 8px;
-    padding: 24px 20px;
+    text-align: center;
   }
 }

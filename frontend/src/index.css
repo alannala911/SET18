@@ -1,12 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap");
-
-:root {
-  font-family: "Inter", Arial, sans-serif;
-  color: #252525;
-  background: #f8f6f1;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
+/* Fjerner standardmarg og gjør størrelsene enklere å kontrollere */
 
 * {
   box-sizing: border-box;
@@ -20,13 +12,19 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+
+  color: #171717;
+  background: #f2f2f2;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 button,
-a {
+input,
+textarea {
   font: inherit;
 }
 
-a {
-  color: inherit;
+img {
+  display: block;
+  max-width: 100%;
 }
