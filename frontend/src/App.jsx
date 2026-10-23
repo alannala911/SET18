@@ -1,11 +1,117 @@
+import {
+  Routes,
+  Route,
+  Link,
+  NavLink,
+} from "react-router-dom";
+
+import Courses from "./Pages/Courses.jsx";
+import Activities from "./Pages/Activities.jsx";
+import News from "./Pages/News.jsx";
+import About from "./Pages/About.jsx";
+import Municipalities from "./Pages/Municipalities.jsx";
+import Contact from "./Pages/Contact.jsx";
+import Search from "./Pages/Search.jsx";
+import Shop from "./Pages/Shop.jsx";
+import MyPage from "./Pages/MyPage.jsx";
+
 import "./App.css";
+
+/* =========================
+   FORSIDEN
+========================= */
+
+function HomePage() {
+  return (
+    <main className="main-content">
+      <section className="hero">
+        <p>Velkommen til</p>
+
+        <h1>Østfold Husflidslag</h1>
+
+        <p className="hero-description">
+          Vi ivaretar og utvikler husflid og håndverk kulturelt,
+          sosialt og økonomisk i Østfold.
+        </p>
+
+        <Link className="hero-button" to="/kurs">
+          Se våre kurs <span aria-hidden="true">→</span>
+        </Link>
+      </section>
+
+      <section className="cards" aria-label="Snarveier">
+        <article className="card course-card">
+          <span className="card-icon" aria-hidden="true">
+            K
+          </span>
+
+          <h2>Kurs</h2>
+
+          <p>Lær nye teknikker og utvikle ferdighetene dine.</p>
+
+          <Link to="/kurs">
+            Se kurs <span aria-hidden="true">→</span>
+          </Link>
+        </article>
+
+        <article className="card activity-card">
+          <span className="card-icon" aria-hidden="true">
+            A
+          </span>
+
+          <h2>Aktiviteter</h2>
+
+          <p>
+            Bli med på arrangementer, møter og sosiale aktiviteter.
+          </p>
+
+          <Link to="/aktiviteter">
+            Se aktiviteter <span aria-hidden="true">→</span>
+          </Link>
+        </article>
+
+        <article className="card news-card">
+          <span className="card-icon" aria-hidden="true">
+            N
+          </span>
+
+          <h2>Nyheter</h2>
+
+          <p>Få med deg det siste fra Østfold Husflidslag.</p>
+
+          <Link to="/nyheter">
+            Se nyheter <span aria-hidden="true">→</span>
+          </Link>
+        </article>
+
+        <article className="card local-card">
+          <span className="card-icon" aria-hidden="true">
+            L
+          </span>
+
+          <h2>Lokale lag</h2>
+
+          <p>Finn ditt nærmeste lokallag og se hva som skjer.</p>
+
+          <Link to="/kommuner">
+            Se mer <span aria-hidden="true">→</span>
+          </Link>
+        </article>
+      </section>
+    </main>
+  );
+}
+
+/* =========================
+   HELE NETTSIDEN
+========================= */
 
 function App() {
   return (
     <>
-      {/* Toppen av nettsiden */}
+      {/* Toppmeny */}
       <header className="topbar">
-        <a className="brand" href="#">
+        <Link className="brand" to="/">
           <span className="brand-symbol" aria-hidden="true">
             ✣
           </span>
@@ -15,53 +121,89 @@ function App() {
             <br />
             Husflidslag
           </strong>
-        </a>
+        </Link>
 
         <nav className="top-links" aria-label="Ekstra navigasjon">
-          <a href="#sok">⌕ Søk</a>
-          <a href="#butikk">🛒 Nettbutikk</a>
-          <a href="#min-side">♙ Min side</a>
+          <Link to="/sok">⌕ Søk</Link>
+          <Link to="/nettbutikk">🛒 Nettbutikk</Link>
+          <Link to="/min-side">♙ Min side</Link>
         </nav>
       </header>
 
-      {/* Sidemeny og hovedinnhold */}
+      {/* Sidemeny og valgt side */}
       <section className="page-layout">
         <aside className="sidebar">
           <nav className="side-links" aria-label="Hovedmeny">
-            <a className="active" href="#">
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">⌂</span>
               Hjem
-            </a>
+            </NavLink>
 
-            <a href="#kurs">
+            <NavLink
+              to="/kurs"
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">▣</span>
               Kurs
-            </a>
+            </NavLink>
 
-            <a href="#aktiviteter">
+            <NavLink
+              to="/aktiviteter"
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">☷</span>
               Aktiviteter
-            </a>
+            </NavLink>
 
-            <a href="#nyheter">
+            <NavLink
+              to="/nyheter"
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">▤</span>
               Nyheter
-            </a>
+            </NavLink>
 
-            <a href="#om-oss">
+            <NavLink
+              to="/om-oss"
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">●</span>
               Om oss
-            </a>
+            </NavLink>
 
-            <a href="#kommuner">
+            <NavLink
+              to="/kommuner"
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">♙</span>
               Kommuner
-            </a>
+            </NavLink>
 
-            <a href="#kontakt">
+            <NavLink
+              to="/kontakt"
+              className={({ isActive }) =>
+                isActive ? "active" : ""
+              }
+            >
               <span aria-hidden="true">✉</span>
               Kontakt oss
-            </a>
+            </NavLink>
           </nav>
 
           <section className="social">
@@ -79,87 +221,27 @@ function App() {
           </section>
         </aside>
 
-        <main className="main-content">
-          {/* Stort hovedområde */}
-          <section className="hero">
-            <p>Velkommen til</p>
-
-            <h1>Østfold Husflidslag</h1>
-
-            <p className="hero-description">
-              Vi ivaretar og utvikler husflid og håndverk kulturelt, sosialt
-              og økonomisk i Østfold.
-            </p>
-
-            <a className="hero-button" href="#kurs">
-              Se våre kurs <span aria-hidden="true">→</span>
-            </a>
-          </section>
-
-          {/* De fire informasjonskortene */}
-          <section className="cards" aria-label="Snarveier">
-            <article className="card course-card" id="kurs">
-              <span className="card-icon" aria-hidden="true">
-                K
-              </span>
-
-              <h2>Kurs</h2>
-
-              <p>Lær nye teknikker og utvikle ferdighetene dine.</p>
-
-              <a href="#kursoversikt">
-                Se kurs <span aria-hidden="true">→</span>
-              </a>
-            </article>
-
-            <article className="card activity-card" id="aktiviteter">
-              <span className="card-icon" aria-hidden="true">
-                A
-              </span>
-
-              <h2>Aktiviteter</h2>
-
-              <p>Bli med på arrangementer, møter og sosiale aktiviteter.</p>
-
-              <a href="#aktivitetsoversikt">
-                Se aktiviteter <span aria-hidden="true">→</span>
-              </a>
-            </article>
-
-            <article className="card news-card" id="nyheter">
-              <span className="card-icon" aria-hidden="true">
-                N
-              </span>
-
-              <h2>Nyheter</h2>
-
-              <p>Få med deg det siste fra Østfold Husflidslag.</p>
-
-              <a href="#nyhetsoversikt">
-                Se nyheter <span aria-hidden="true">→</span>
-              </a>
-            </article>
-
-            <article className="card local-card" id="kommuner">
-              <span className="card-icon" aria-hidden="true">
-                L
-              </span>
-
-              <h2>Lokale lag</h2>
-
-              <p>Finn ditt nærmeste lokallag og se hva som skjer.</p>
-
-              <a href="#lokallag">
-                Se mer <span aria-hidden="true">→</span>
-              </a>
-            </article>
-          </section>
-        </main>
+        {/* Sidene og nettadressene */}
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/kurs" element={<Courses />} />
+          <Route path="/aktiviteter" element={<Activities />} />
+          <Route path="/nyheter" element={<News />} />
+          <Route path="/om-oss" element={<About />} />
+          <Route
+            path="/kommuner"
+            element={<Municipalities />}
+          />
+          <Route path="/kontakt" element={<Contact />} />
+          <Route path="/sok" element={<Search />} />
+          <Route path="/nettbutikk" element={<Shop />} />
+          <Route path="/min-side" element={<MyPage />} />
+        </Routes>
       </section>
 
-      {/* Bunnen av nettsiden */}
-      <footer className="footer" id="kontakt">
-        <a className="brand" href="#">
+      {/* Bunntekst */}
+      <footer className="footer">
+        <Link className="brand" to="/">
           <span className="brand-symbol" aria-hidden="true">
             ✣
           </span>
@@ -169,14 +251,14 @@ function App() {
             <br />
             Husflidslag
           </strong>
-        </a>
+        </Link>
 
         <p>Tradisjon · Kreativitet · Fellesskap</p>
 
         <nav aria-label="Kontakt og sosiale medier">
           <a href="#">Facebook</a>
           <a href="#">Instagram</a>
-          <a href="mailto:kontakt@eksempel.no">Kontakt oss →</a>
+          <Link to="/kontakt">Kontakt oss →</Link>
         </nav>
       </footer>
     </>
