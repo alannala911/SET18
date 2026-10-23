@@ -1,0 +1,347 @@
+/* =========================
+   HELE AKTIVITETSSIDEN
+========================= */
+
+.activities-page {
+  width: 100%;
+  color: #263238;
+  background: #ffffff;
+}
+
+/* =========================
+   INTRODUKSJON
+========================= */
+
+.activities-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 350px;
+  padding: 55px 7%;
+  background: #fff4f2;
+}
+
+.activities-hero header {
+  max-width: 650px;
+}
+
+.activities-label {
+  margin: 0 0 15px;
+  color: #8c2943;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.activities-hero h1 {
+  margin: 0 0 18px;
+  font-size: clamp(42px, 5vw, 62px);
+  line-height: 1.05;
+}
+
+.activities-intro {
+  max-width: 620px;
+  margin-bottom: 28px;
+  color: #56616a;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.activities-button {
+  display: inline-block;
+  padding: 14px 20px;
+  color: white;
+  border-radius: 9px;
+  background: #ae304f;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.activities-button:hover {
+  background: #8d263f;
+}
+
+/* =========================
+   SYMBOLER I INTRODUKSJONEN
+========================= */
+
+.activities-symbols {
+  position: relative;
+  width: 280px;
+  height: 220px;
+}
+
+.activities-symbols span {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.symbol-large {
+  top: 20px;
+  right: 30px;
+  width: 180px;
+  height: 180px;
+  color: #ad304f;
+  background: #f0ced4;
+  font-size: 95px;
+}
+
+.symbol-small {
+  top: 0;
+  left: 0;
+  width: 70px;
+  height: 70px;
+  color: #88551f;
+  background: #f4e8bd;
+  font-size: 38px;
+}
+
+.symbol-flower {
+  right: 0;
+  bottom: 0;
+  width: 90px;
+  height: 90px;
+  color: #4c705c;
+  background: #d8e5d9;
+  font-size: 52px;
+}
+
+/* =========================
+   KOMMENDE AKTIVITETER
+========================= */
+
+.upcoming-activities {
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 55px 30px 70px;
+}
+
+.activities-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.activities-heading h2 {
+  margin: 0;
+  font-size: 38px;
+}
+
+.activity-count {
+  padding: 10px 18px;
+  color: #8c2943;
+  border: 1px solid #e5c8ce;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.prototype-message {
+  margin: 25px 0;
+  padding: 16px;
+  border-left: 4px solid #a55d30;
+  border-radius: 0 8px 8px 0;
+  color: #60493c;
+  background: #fff5e7;
+}
+
+/* =========================
+   AKTIVITETSKORT
+========================= */
+
+.activity-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+.activity-card {
+  overflow: hidden;
+  border: 1px solid #dddddd;
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
+}
+
+.activity-image {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.activity-image-pink {
+  background: #efced4;
+}
+
+.activity-image-yellow {
+  background: #f3e9c9;
+}
+
+.activity-image-green {
+  background: #d9e7db;
+}
+
+.activity-image > span {
+  font-size: 65px;
+}
+
+.activity-image small {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: white;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.activity-content {
+  padding: 22px;
+}
+
+.activity-category {
+  display: inline-block;
+  margin: 0;
+  padding: 7px 12px;
+  color: #8c2943;
+  border-radius: 999px;
+  background: #faedf0;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.activity-content h3 {
+  margin: 15px 0 12px;
+  font-size: 25px;
+}
+
+.activity-content > p:not(.activity-category) {
+  min-height: 55px;
+  color: #596773;
+  line-height: 1.5;
+}
+
+.activity-content dl {
+  margin: 20px 0;
+  padding: 17px 0;
+  border-top: 1px solid #dddddd;
+  border-bottom: 1px solid #dddddd;
+}
+
+.activity-content dl section {
+  display: grid;
+  grid-template-columns: 65px 1fr;
+  margin: 10px 0;
+}
+
+.activity-content dt {
+  font-weight: bold;
+}
+
+.activity-content dd {
+  margin: 0;
+}
+
+.activity-content button {
+  padding: 10px 0;
+  color: #8c2943;
+  border: none;
+  background: transparent;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.activity-content button:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   INFORMASJON NEDERST
+========================= */
+
+.activities-information {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  margin-top: 55px;
+  padding: 25px 30px;
+  border-radius: 15px;
+  background: #e8f0eb;
+}
+
+.activities-information > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  color: #466b56;
+  border-radius: 50%;
+  background: white;
+  font-size: 22px;
+}
+
+.activities-information h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.activities-information p {
+  margin: 0;
+  color: #5c6862;
+}
+
+/* =========================
+   NETTBRETT
+========================= */
+
+@media (max-width: 1000px) {
+  .activity-list {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-content > p:not(.activity-category) {
+    min-height: auto;
+  }
+}
+
+/* =========================
+   MOBIL
+========================= */
+
+@media (max-width: 700px) {
+  .activities-hero {
+    display: block;
+    padding: 45px 25px;
+  }
+
+  .activities-symbols {
+    display: none;
+  }
+
+  .activities-hero h1 {
+    font-size: 42px;
+  }
+
+  .activities-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .upcoming-activities {
+    padding: 45px 20px;
+  }
+
+  .activities-information {
+    align-items: flex-start;
+  }
+}
