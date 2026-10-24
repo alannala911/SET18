@@ -253,7 +253,7 @@ function App() {
           </strong>
         </Link>
 
-        <p>Tradisjon     |     Kreativitet     |      Fellesskap</p>
+        <p>Tradisjon {" | "} Kreativitet {" | "} Fellesskap</p>
 
         <nav aria-label="Kontakt og sosiale medier">
           <a href="#">Facebook</a>
