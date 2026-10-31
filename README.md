@@ -37,7 +37,9 @@ npm run dev
 
 Åpne adressen Vite viser, vanligvis `http://localhost:5173`. Frontend videresender `/api` til backend på port 3000.
 
-Medlemsregistrering ligger på `/medlemskap`. Medlems- og administratorinnlogging ligger side om side på `/min-side`; admin-verktøy vises etter administratorinnlogging. Fra medlemsinnloggingen kan mottakere åpne gaveaktivering ved å lime inn sin personlige aktiveringslenke eller kode, og håndverkere kan gå direkte til søknadsskjemaet. Den gamle adressen `/admin` videresender til `/min-side`. Admin-legitimasjon settes kun gjennom miljøvariablene `ADMIN_EMAIL` og `ADMIN_PASSWORD`.
+Medlemsregistrering ligger på `/medlemskap`. Medlems- og administratorinnlogging ligger side om side på `/min-side`; admin-verktøy vises etter administratorinnlogging. Fra medlemsinnloggingen kan mottakere åpne gaveaktivering, mindreårige brukere registrere innlogging, og godkjente husflidshåndverkere opprette passord ved å lime inn en personlig aktiveringslenke eller kode. Håndverkersøknaden sendes fortsatt fra medlemskapsskjemaet; etter godkjenning deler administrator lenken privat med søkeren. Den gamle adressen `/admin` videresender til `/min-side`. Admin-legitimasjon settes kun gjennom miljøvariablene `ADMIN_EMAIL` og `ADMIN_PASSWORD`.
+
+Admin kan aktivere og konfigurere standardskjemaene, legge til egne felt og innholdsbokser i dem, og lage helt nye skjemaer fra blankt. Innsendinger fra egendefinerte skjemaer lagres som søknader for administratorbehandling; de oppretter ikke medlemskonto automatisk.
 
 Dette er en lokal utviklingsversjon. Ikke bruk ekte personopplysninger. Betaling, e-postutsending og adresseoppslag er ikke integrert. Adressefeltene støtter nettleserens innebygde autofyll når nettleseren har lagret adresser; dette er ikke et adresseoppslag eller en verifisering. Se [backend/README.md](./backend/README.md) for lagring, sikkerhetsbegrensninger og API-detaljer.
 

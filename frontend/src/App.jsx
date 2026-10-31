@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Routes,
   Route,
@@ -18,6 +19,8 @@ import MyPage from "./Pages/MyPage.jsx";
 import Membership from "./Pages/Membership.jsx";
 
 import "./App.css";
+
+const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
 /* =========================
    FORSIDEN
@@ -109,6 +112,35 @@ function HomePage() {
 ========================= */
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const authCheckSequence = useRef(0);
+
+  const refreshAuthentication = useCallback(() => {
+    const sequence = ++authCheckSequence.current;
+    Promise.all([
+      fetch(`${API}/membership/me`, { credentials: "include" }),
+      fetch(`${API}/auth/me`, { credentials: "include" }),
+    ])
+      .then((responses) => {
+        if (sequence === authCheckSequence.current) {
+          setIsAuthenticated(responses.some((response) => response.ok));
+        }
+      })
+      .catch((error) => {
+        console.error("Kunne ikke kontrollere innloggingsstatus.", error);
+      });
+  }, []);
+
+  useEffect(() => {
+    refreshAuthentication();
+    window.addEventListener("set18-auth-change", refreshAuthentication);
+    window.addEventListener("focus", refreshAuthentication);
+    return () => {
+      window.removeEventListener("set18-auth-change", refreshAuthentication);
+      window.removeEventListener("focus", refreshAuthentication);
+    };
+  }, [refreshAuthentication]);
+
   return (
     <>
       {/* Toppmeny */}
@@ -129,7 +161,7 @@ function App() {
           <Link to="/sok">⌕ Søk</Link>
           <Link to="/nettbutikk">🛒 Nettbutikk</Link>
           <Link to="/medlemskap">♡ Medlemskap</Link>
-          <Link to="/min-side">♙ Min side</Link>
+          <Link to="/min-side">♙ {isAuthenticated ? "Min side" : "Logg inn"}</Link>
         </nav>
       </header>
 

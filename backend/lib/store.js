@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { activities as defaultActivities } from "../data/content.js";
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || "./data");
 export const uploadDirectory = path.join(dataDirectory, "uploads");
@@ -14,8 +15,6 @@ const fieldDefinitions = {
     ["person.gender", "Kjønn", true],
     ["person.email", "E-post", true],
     ["person.phone", "Telefonnummer", true],
-    ["password", "Passord", true],
-    ["confirmPassword", "Bekreft passord", true],
     ["address.street", "Gateadresse", true],
     ["address.postalCode", "Postnummer", true],
     ["address.city", "Poststed", true],
@@ -36,8 +35,6 @@ const fieldDefinitions = {
     ["parent.gender", "Forelders kjønn", true],
     ["parent.email", "Forelders e-post", true],
     ["parent.phone", "Forelders telefonnummer", true],
-    ["password", "Passord", true],
-    ["confirmPassword", "Bekreft passord", true],
     ["address.street", "Gateadresse", true],
     ["address.postalCode", "Postnummer", true],
     ["address.city", "Poststed", true],
@@ -142,12 +139,16 @@ const initialState = () => ({
   members: [],
   applications: [],
   sessions: [],
+  activities: structuredClone(defaultActivities),
   config: {
     schemaVersion: 3,
     membershipTypes: { regular: true, minor: true, gift: true, craft: true },
     regions: [{ name: "Østfold", chapters: ["Fredrikstad", "Moss", "Sarpsborg"] }],
     addressLookupAvailable: false,
     fields: defaultFields(),
+    sections: { regular: {}, minor: {}, gift: {}, craft: {} },
+    additionalFields: { regular: [], minor: [], gift: [], craft: [] },
+    customForms: [],
     requiredFields: Object.fromEntries(Object.entries(defaultFields()).map(([flow, fields]) => [
       flow, Object.entries(fields).filter(([, value]) => value.required).map(([key]) => key)
     ])),
@@ -170,6 +171,8 @@ if (!state || typeof state !== "object" || !Array.isArray(state.members) ||
     !Array.isArray(state.applications) || !Array.isArray(state.sessions)) {
   throw new Error("Application store has an invalid format");
 }
+if (state.activities === undefined) state.activities = structuredClone(defaultActivities);
+if (!Array.isArray(state.activities)) throw new Error("Application store activities have an invalid format");
 const defaults = initialState().config;
 const storedSchemaVersion = state.config?.schemaVersion || 0;
 const migratingConfig = storedSchemaVersion < 2;
@@ -183,6 +186,28 @@ state.config.fields = Object.fromEntries(Object.keys(defaults.fields).map((flow)
   flow,
   { ...defaults.fields[flow], ...(state.config.fields?.[flow] || {}) }
 ]));
+state.config.fields.minor["child.email"] = {
+  ...state.config.fields.minor["child.email"],
+  required: true
+};
+state.config.fields.minor["child.phone"] = {
+  ...state.config.fields.minor["child.phone"],
+  required: true
+};
+delete state.config.fields.minor.password;
+delete state.config.fields.minor.confirmPassword;
+state.config.requiredFields = Object.fromEntries(Object.entries(
+  state.config.requiredFields || defaults.requiredFields
+).map(([flow, fields]) => [
+  flow,
+  flow === "minor"
+    ? [...new Set([
+      ...fields.filter((field) => !["password", "confirmPassword"].includes(field)),
+      "child.email",
+      "child.phone"
+    ])]
+    : fields
+]));
 if (migratingConfig && (!Array.isArray(state.config.regions) || state.config.regions.length === 0)) {
   state.config.regions = defaults.regions;
 }
@@ -190,10 +215,13 @@ state.config.options = Object.fromEntries(Object.keys(defaults.options).map((flo
   flow,
   { ...defaults.options[flow], ...(state.config.options?.[flow] || {}) }
 ]));
+state.config.additionalFields ??= defaults.additionalFields;
+state.config.sections ??= defaults.sections;
+state.config.customForms ??= defaults.customForms;
 state.config.requiredFields ??= defaults.requiredFields;
 state.config.craftShippingInstructions ??= "";
 state.config.addressLookupAvailable = false;
-state.config.schemaVersion = 3;
+state.config.schemaVersion = 4;
 
 let pendingWrite = Promise.resolve();
 

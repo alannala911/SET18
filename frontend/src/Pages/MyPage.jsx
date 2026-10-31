@@ -47,6 +47,7 @@ export default function MyPage() {
         body: JSON.stringify(credentials),
       });
       setMember(data.member);
+      window.dispatchEvent(new Event("set18-auth-change"));
       setCredentials({ email: "", password: "" });
     } catch (loginError) {
       setError(loginError.message);
@@ -59,12 +60,25 @@ export default function MyPage() {
     try {
       await request("/membership/logout", { method: "POST", body: JSON.stringify({}) });
       setMember(null);
+      window.dispatchEvent(new Event("set18-auth-change"));
     } catch (logoutError) {
       setError(logoutError.message);
     }
   }
 
   const profile = member?.profile || {};
+  const memberDetails = profile.person || profile.child || profile.recipient || profile.applicant || profile;
+  const localGroup = profile.localGroup || profile;
+  const memberName = profile.name ||
+    [memberDetails.firstName, memberDetails.lastName].filter(Boolean).join(" ") ||
+    memberDetails.email;
+  const membershipLabel = member?.type === "minor"
+    ? "Mindreårig"
+    : member?.type === "gift"
+      ? "Gavemedlemskap"
+      : member?.type === "craft"
+        ? "Husflidshåndverker"
+        : "Vanlig medlem";
   return (
     <main className="main-content membership-page">
       <p className="membership-eyebrow">Medlemsområde</p>
@@ -72,10 +86,10 @@ export default function MyPage() {
       {member ? (
         <div className="my-page-auth-grid">
           <section className="membership-section my-page-member-panel">
-            <h2>Velkommen, {profile.name || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || profile.email}</h2>
-            <p>Medlemskapstype: {member.type === "minor" ? "Mindreårig" : member.type === "gift" ? "Gavemedlemskap" : "Vanlig medlem"}</p>
-            {profile.region && <p>Region: {profile.region}</p>}
-            {profile.chapter && <p>Lokallag: {profile.chapter}</p>}
+            <h2>Velkommen, {memberName}</h2>
+            <p>Medlemskapstype: {membershipLabel}</p>
+            {localGroup.region && <p>Region: {localGroup.region}</p>}
+            {localGroup.chapter && <p>Lokallag: {localGroup.chapter}</p>}
             <button className="membership-secondary" type="button" onClick={logout}>Logg ut</button>
           </section>
           <section className="my-page-admin-panel" aria-label="Administratorinnlogging og -verktøy">
@@ -96,7 +110,8 @@ export default function MyPage() {
             <button className="membership-submit" disabled={busy}>{busy ? "Logger inn …" : "Logg inn"}</button>
             <p className="membership-note my-page-help-links">
               <Link to="/medlemskap?aktiver-gave=1">Mottatt medlemskap? Trykk her.</Link>
-              <Link to="/medlemskap?type=craft">Blitt husflidhåndverker uten tidligere medlemskap? Trykk her.</Link>
+              <Link to="/medlemskap?aktiver-mindreaarig-entry=1">Registrert bruker for mindreårig? Trykk her.</Link>
+              <Link to="/medlemskap?aktiver-haandverker-entry=1">Blitt husflidhåndverker uten tidligere medlemskap? Trykk her.</Link>
             </p>
           </form>
           <section className="my-page-admin-panel" aria-label="Administratorinnlogging og -verktøy">

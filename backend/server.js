@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 app.use(cors({
   origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
   credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json({ limit: "1mb" }));
