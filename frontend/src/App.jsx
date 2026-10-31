@@ -3,6 +3,7 @@ import {
   Route,
   Link,
   NavLink,
+  Navigate,
 } from "react-router-dom";
 
 import Courses from "./Pages/Courses.jsx";
@@ -14,6 +15,7 @@ import Contact from "./Pages/Contact.jsx";
 import Search from "./Pages/Search.jsx";
 import Shop from "./Pages/Shop.jsx";
 import MyPage from "./Pages/MyPage.jsx";
+import Membership from "./Pages/Membership.jsx";
 
 import "./App.css";
 
@@ -126,6 +128,7 @@ function App() {
         <nav className="top-links" aria-label="Ekstra navigasjon">
           <Link to="/sok">⌕ Søk</Link>
           <Link to="/nettbutikk">🛒 Nettbutikk</Link>
+          <Link to="/medlemskap">♡ Medlemskap</Link>
           <Link to="/min-side">♙ Min side</Link>
         </nav>
       </header>
@@ -235,6 +238,8 @@ function App() {
           <Route path="/kontakt" element={<Contact />} />
           <Route path="/sok" element={<Search />} />
           <Route path="/nettbutikk" element={<Shop />} />
+          <Route path="/medlemskap" element={<Membership />} />
+          <Route path="/admin" element={<Navigate to="/min-side" replace />} />
           <Route path="/min-side" element={<MyPage />} />
         </Routes>
       </section>

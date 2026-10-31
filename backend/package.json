@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "check": "node --check server.js && node --check routes/membership.js && node --check routes/auth.js && node --check routes/admin.js && node --check lib/store.js && node --check lib/security.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "multer": "^2.0.2"
   }
 }

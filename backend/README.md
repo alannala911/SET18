@@ -1,28 +1,101 @@
-# Østfold Husflidslag Backend
+# Østfold Husflidslag backend (local-development MVP)
 
-This backend is intentionally kept separate from the existing frontend app.
+## Run locally
 
-## Start the server
+Requires Node.js 20+ and npm. From this directory:
 
-```bash
-cd backend
+```sh
 npm install
+export ADMIN_EMAIL='admin@example.test'
+export ADMIN_PASSWORD='use-a-long-unique-local-secret'
+# Optional: set this to the exact browser origin(s), comma-separated.
+export CORS_ORIGINS='http://localhost:5173,http://127.0.0.1:5173'
+npm run check
 npm start
 ```
 
-## Available routes
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` are required for admin login and are not given defaults. `PORT` defaults to `3000`; `DATA_DIR` defaults to `./data` relative to the backend working directory; `PUBLIC_FRONTEND_URL` defaults to `http://localhost:5173` and controls gift activation URLs. Use a persistent writable `DATA_DIR` for durable local storage. Do not expose it through a static file server. Uploaded files are private and are only retrievable by an authenticated admin.
 
-- GET /api/health
-- GET /api/activities
-- GET /api/activities/:id
-- GET /api/courses
-- GET /api/courses/:id
-- GET /api/news
-- GET /api/news/:id
-- GET /api/municipalities
-- GET /api/municipalities/:id
-- POST /api/contact
+The JSON store and private uploads are created under `DATA_DIR` and ignored by git. **Stored member and application personal information is unencrypted. Use test data only; this local-development MVP is not suitable for real member data or production.** Member passwords are hashed with Node's scrypt; session tokens are random, stored as hashes, and sent in HttpOnly, SameSite=Lax cookies. Set `NODE_ENV=production` to enable Secure cookies (HTTPS is then required). CORS is restricted to the configured origins; requests without an `Origin` header are supported for local command-line clients. The admin bootstrap credentials are environment-only. This MVP deliberately does not process payments or send email.
 
-## Reverting the backend
+## API contract
 
-If you want to remove this backend later, delete the `backend/` folder or reset the repo to the previous Git state.
+All JSON responses use `{ "message": "..." }` for action results/errors; registration actions also return `{ "message", "id" }`. Validation errors may include `fields: string[]`. JSON request bodies are limited to 1 MiB.
+
+### Public membership and member session
+
+- `GET /api/membership/config` always includes these base properties:
+  ```json
+  {
+    "membershipTypes": { "regular": true, "minor": true, "gift": true, "craft": true },
+    "regions": [{ "name": "Region", "chapters": ["Chapter"] }],
+    "addressLookupAvailable": false
+  }
+  ```
+  The response also includes `fields`, `requiredFields`, `options`, and `craftShippingInstructions` for the configurable frontend forms. A sample Østfold region with Fredrikstad, Moss, and Sarpsborg chapters is included by default. Typed addresses are stored as supplied and are **not verified**. There is no address-provider integration; the frontend uses standard browser autofill attributes, which may suggest addresses saved in the user's browser. Availability and suggestions depend on the browser and the user's saved data.
+- `POST /api/membership/regular` accepts JSON using the frontend's flat person fields:
+  ```json
+  {
+    "birthDate": "1990-01-01",
+    "firstName": "Example",
+    "middleName": "",
+    "lastName": "Member",
+    "gender": "Annet",
+    "email": "member@example.test",
+    "phone": "+47 00000000",
+    "password": "at-least-12-characters",
+    "address": { "street": "Testgata 1", "postalCode": "1600", "city": "Fredrikstad" },
+    "region": "Østfold",
+    "chapter": "Fredrikstad"
+  }
+  ```
+- `POST /api/membership/minor` accepts `{ "child": { "firstName", "middleName", "lastName", "gender", "email", "phone", "birthDate" }, "parents": [{ "firstName", "middleName", "lastName", "gender", "email", "phone" }], "password": "...", "address": { "street", "postalCode", "city" }, "region": "...", "chapter": "...", "consent": true }`. At least one parent/guardian is required. Child must be under 18; regular members must be at least 18. Guardian consent is required.
+- `POST /api/membership/gift` accepts:
+  ```json
+  {
+    "purchaser": {
+      "birthDate": "1980-01-01", "firstName": "Gift", "middleName": "",
+      "lastName": "Buyer", "gender": "Annet", "email": "buyer@example.test",
+      "phone": "+47 00000000",
+      "address": { "street": "Testgata 1", "postalCode": "1600", "city": "Fredrikstad" }
+    },
+    "recipient": {
+      "birthDate": "2014-01-01", "firstName": "Gift", "middleName": "",
+      "lastName": "Recipient", "gender": "Annet", "email": "recipient@example.test",
+      "phone": "+47 00000000",
+      "address": { "street": "Testgata 2", "postalCode": "1600", "city": "Fredrikstad" }
+    },
+    "guardian": {
+      "firstName": "Guardian", "middleName": "", "lastName": "Example",
+      "gender": "Annet", "email": "guardian@example.test", "phone": "+47 11111111"
+    },
+    "consent": true,
+    "region": "Østfold",
+    "chapter": "Fredrikstad"
+  }
+  ```
+  Purchasers must be at least 18, and a valid recipient birthdate is required. For recipients under 18, `guardian` and `consent: true` are mandatory; guardian requires first/last name, gender, valid email and phone (middle name is optional). Guardian fields are optional in admin defaults but are conditionally required by backend validation for minor recipients. On activation the member is created as type `minor` with the recipient under `profile.child`, guardian under `profile.parents[0]`, and consent recorded. Adult recipients do not need guardian details and activate as type `gift`. It records the gift only; it does not charge a payment method or send email. Its `activationUrl` is `${PUBLIC_FRONTEND_URL}/medlemskap?aktiver=<token>` (default `http://localhost:5173/medlemskap?aktiver=<token>`).
+- `GET /api/membership/gift/activate/:token` validates the token and returns `{ "groupSelected": boolean, "localGroup": { "region", "chapter" } | null }`; it exposes no recipient information. `POST` to the same route accepts `{ "password": "...", "region": "Østfold", "chapter": "Moss" }`. Group fields may be omitted if already selected on purchase (the purchase selection is retained) or when no group is configured; otherwise a valid pair is required. A group selected during purchase cannot be changed during activation. The created member profile contains `recipient` and `localGroup`. Activation tokens expire after 30 days and are single-use.
+- Regular, minor/child, and activated gift member email addresses and primary phone numbers are unique. Phones are compared by digits, ignoring common formatting characters. Registration and gift recipient creation reject email/phone pairs already associated with another member or pending gift (409), preventing an existing email from being paired with a different phone or vice versa.
+- `POST /api/membership/login` accepts `{ "email", "password" }`; `GET /api/membership/me` returns the authenticated member's safe profile; `POST /api/membership/logout` ends that member session. Successful login uses an HttpOnly member-session cookie. Send browser requests with credentials enabled.
+- `POST /api/membership/craft` requires `multipart/form-data` for a valid submission. Include an `application` field containing the JSON application object and repeated `files` attachment fields. Payload: `{ "business": { "name", "organizationNumber", "address": { "street", "postalCode", "city" }, "phone", "email", "website", "qualificationConfirmed": true }, "applicant": { "firstName", "middleName", "lastName", "gender", "email", "phone", "birthDate", "address": { "street", "postalCode", "city" } }, "craftType": "...", "admissionMethod": "certificate" | "jury", "jury": { ... }, "region": "...", "chapter": "...", "criteriaAccepted": true }`. Applicants must be 18 or older, with a syntactically valid phone number; existing members may apply. Qualification confirmation and criteria acceptance are mandatory. Maximum five files, 5 MiB each; only signature-checked PDF, PNG, and JPEG files are accepted. All craft applications start `pending_review`; only an admin can approve/reject.
+
+### Admin authentication and configuration
+
+- `POST /api/auth/login` accepts `{ "email", "password" }` matching `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Admin login is separate from member login. `GET /api/auth/me` reports the admin session; `POST /api/auth/logout` revokes it.
+- Admin routes require the admin cookie. Browser clients must send credentials.
+- `GET /api/admin/config` returns the editable settings object. `PUT /api/admin/config` accepts partial updates for `membershipTypes`, `regions`, `fields`, `options`, and `craftShippingInstructions`; omitted properties are preserved. Field keys use the frontend's exact dotted IDs, e.g. `person.firstName`, `child.birthDate`, `parent.email`, `purchaser.address.street`, `business.qualificationConfirmed`, `applicant.phone`, `jury.education`, `localGroup.region`, and `files`. It accepts this shape:
+  ```json
+  {
+    "membershipTypes": { "regular": true },
+    "regions": [{ "name": "Østfold", "chapters": ["Fredrikstad", "Moss"] }],
+    "fields": { "regular": { "person.firstName": { "visible": true, "required": true, "label": "Fornavn" } } },
+    "options": { "regular": { "person.gender": ["Mann", "Kvinne", "Annet"] } },
+    "craftShippingInstructions": "Instructions for sending craft samples."
+  }
+  ```
+  `fields.<flow>` maps dotted field IDs to `{ "visible": boolean, "required": boolean, "label"?: string }`. Gift defaults include optional `guardian.firstName`, `guardian.middleName`, `guardian.lastName`, `guardian.gender`, `guardian.email`, `guardian.phone`, and `consent`; the server enforces them for a recipient under 18 regardless of admin flags. `requiredFields` is derived from these flags on every update; callers do not set it directly. Partial field updates retain omitted fields/metadata. Options map flow and dotted field IDs to arrays of strings. Regions and chapters are validated against submitted selections when configured. `addressLookupAvailable` is always false and cannot be enabled through configuration.
+- `GET /api/admin/applications` returns `{ "applications": [...] }` without activation hashes or upload storage paths. `PATCH /api/admin/applications/:id` accepts `{ "status": "pending_review" | "approved" | "rejected", "note"?: "..." }` for craft review.
+- `GET /api/admin/applications/:id/files/:fileId` streams an attachment after admin authentication; stored upload paths are never public.
+
+Existing content and contact routes are preserved: `/api/health`, `/api/activities`, `/api/courses`, `/api/news`, `/api/municipalities`, and `/api/contact`.

@@ -17,7 +17,7 @@
 - Backend skal være strukturert slik at det senere kan utvides med admin-funksjonalitet og medlemsregistrering.
 
 ## Medlemsregistrering
-Administrator skal kunne konfigurere hvordan innmeldingsskjemaet ser ut, blant annet hvilke medlemskapstyper som er aktive, hvilke felt som vises og hvilke felt som er obligatoriske. Skjemaet skal skille mellom vanlig medlemskap (18 år og eldre) og medlemskap for mindreårige (under 18 år).
+Administrator skal kunne konfigurere hvordan innmeldings- og søknadsskjemaene ser ut. Dette gjelder vanlig medlemskap, medlemskap for mindreårige, medlemskap gitt i gave og søknad om medlemskap som husflidshåndverker. Innloggingen til en eksisterende konto er separat fra disse skjemaene.
 
 ### Vanlig medlemskap (18 år og eldre)
 - Fødselsdato: brukes til å kontrollere at kjøperen er 18 år eller eldre.
@@ -90,6 +90,7 @@ Kjøperen skal kunne kjøpe et medlemskap på vegne av en mottaker. Kjøperen m�
 - Mottakerens adresse:
   - Gateadresse skrives inn og må velges fra adresseforslag som viser adresse, postnummer og poststed.
   - Postnummer og poststed vises i egne felt etter at et adresseforslag er valgt. Feltene kan ikke redigeres direkte.
+- Hvis mottakeren er under 18 år, må kjøperen oppgi minst én foresatts informasjon og bekrefte at foresatt har samtykket.
 - Kjøperen kan velge region og lokallag for mottakeren ved kjøpet, men dette er valgfritt.
 - Kjøperen velger ikke passord for mottakeren.
 - Etter kjøpet skal mottakeren kunne åpne «Mottatt medlemskap? Trykk her» og opprette passord. Hvis region og lokallag ikke allerede er valgt, skal mottakeren kunne velge dette under aktiveringen.
@@ -155,11 +156,15 @@ En næringsdrivende innen husflid og håndverk skal kunne søke om medlemskap so
 - Brukeren må velge et nytt adresseforslag for å fylle inn postnummer og poststed igjen.
 
 ### Admin-konfigurasjon
-Administrator skal kunne styre:
-- hvilke medlemskapstyper som er aktive
-- hvilke felt som vises og hvilke som er obligatoriske
+Administrator skal kunne konfigurere hvert skjema og hvilke alternativer søkeren får:
+- hvilke skjemaer og medlemskapstyper som er aktive
+- hvilke felt og seksjoner som vises, og hvilke som er obligatoriske
+- feltenes navn, hjelpetekst og type, samt valgene som vises i nedtrekkslister og andre valgfelt
+- betinget visning av felt og seksjoner, for eksempel juryeringsfeltene når juryert opptak velges
+- hvilke valideringer som gjelder for feltene, inkludert aldersgrenser, samsvar mellom passord og kontroll av e-post/telefonnummer
 - hvilke regioner og lokallag som er tilgjengelige
 - hvilke lokallag som tilhører hver region
+- hvilke håndverkstyper som kan velges
 - informasjon om hvor produkter skal sendes ved juryert opptak som husflidshåndverker
 
 ### Avklaringer

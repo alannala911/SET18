@@ -6,12 +6,36 @@ import coursesRoutes from "./routes/courses.js";
 import newsRoutes from "./routes/news.js";
 import municipalitiesRoutes from "./routes/municipalities.js";
 import contactRoutes from "./routes/contact.js";
+import membershipRoutes from "./routes/membership.js";
+import authRoutes from "./routes/auth.js";
+import adminRoutes from "./routes/admin.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 
-app.use(cors());
-app.use(express.json());
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "same-origin");
+  const origin = req.get("Origin");
+  if (origin && !allowedOrigins.has(origin)) {
+    return res.status(403).json({ message: "Origin is not allowed" });
+  }
+  next();
+});
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type"]
+}));
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "Østfold Husflidslag backend" });
@@ -22,9 +46,16 @@ app.use("/api/courses", coursesRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/municipalities", municipalitiesRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/membership", membershipRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use((error, req, res, next) => {
-  console.error(error);
+  if (res.headersSent) return next(error);
+  if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+    return res.status(400).json({ message: "Request body must be valid JSON" });
+  }
+  console.error(error.message);
   res.status(500).json({ message: "Something went wrong" });
 });
 
