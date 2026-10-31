@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { readStore, updateStore, uploadDirectory } from "../lib/store.js";
+import { frontendLink, mailConfigured, sendLinkMail } from "../lib/mailer.js";
+import { rateLimit } from "../lib/rateLimit.js";
 import {
   createToken,
   hashPassword,
@@ -12,13 +14,45 @@ import {
   validEmail,
   verifyPassword
 } from "../lib/security.js";
+import {
+  adminProfile,
+  agreementFieldIds,
+  membershipExpired,
+  membershipValidUntil,
+  renewedValidUntil,
+  agreementsFrom,
+  isRecord,
+  memberEmail,
+  termsRequiredMessage
+} from "../lib/members.js";
+import {
+  FORM_DATA_ERROR_PREFIX,
+  ageOnDate,
+  checkRequired,
+  contactMatches,
+  groupFrom,
+  memberConflict,
+  normalizeAddress,
+  normalizedPhone,
+  pendingGiftConflict,
+  personEmail,
+  regularProfile,
+  sanitizeValue,
+  validateOptions,
+  validatePhone,
+  validateRegion,
+  validDateString
+} from "../lib/membershipValidation.js";
 
 const router = express.Router();
-const flows = ["regular", "minor", "gift", "craft"];
 const memberCookieName = "set18_member_session";
 const memberSessionLifetimeMs = 8 * 60 * 60 * 1000;
 const minimumPasswordLength = 12;
+const profileChangeLifetimeMs = 30 * 60 * 1000;
 const failedMemberLogins = new Map();
+const passwordResetLifetimeMs = 30 * 60 * 1000;
+const registrationLimit = rateLimit({ max: 20, windowMs: 60 * 60 * 1000, message: "For mange registreringer. Prøv igjen senere." });
+const passwordLimit = rateLimit({ max: 10, windowMs: 15 * 60 * 1000 });
 const dummyPasswordHash = `scrypt:${"0".repeat(32)}:${"0".repeat(128)}`;
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -29,10 +63,10 @@ const customFormUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 10, fields: 100, parts: 110 }
 }).any();
 
-function getCookie(req, name) {
+function getMemberCookie(req) {
   const cookie = (req.headers.cookie || "").split(";").map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-  return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : "";
+    .find((part) => part.startsWith(`${memberCookieName}=`));
+  return cookie ? decodeURIComponent(cookie.slice(memberCookieName.length + 1)) : "";
 }
 
 function safeMember(member) {
@@ -40,9 +74,14 @@ function safeMember(member) {
     passwordHash,
     credentialSetupTokenHash,
     credentialSetupExpiresAt,
+    profileChangeTokenHash,
+    profileChangeExpiresAt,
+    profileChangeRequestedAt,
+    passwordResetTokenHash,
+    passwordResetExpiresAt,
     ...safe
   } = member;
-  return safe;
+  return { ...safe, validUntil: membershipValidUntil(member), expired: membershipExpired(member) };
 }
 
 function memberCookieOptions() {
@@ -55,16 +94,27 @@ function memberCookieOptions() {
   };
 }
 
+function sendProfileChangeEmail(email, token) {
+  return sendLinkMail(email, {
+    subject: "Lenke for å endre personopplysninger",
+    intro: "Bruk lenken innen 30 minutter for å endre personopplysningene dine",
+    linkText: "Endre personopplysninger",
+    link: frontendLink(`/min-side/endre-personopplysninger?token=${encodeURIComponent(token)}`),
+    outro: "Hvis du ikke ba om denne lenken, kan du se bort fra e-posten."
+  });
+}
+
 export function requireMember(req, res, next) {
-  const token = getCookie(req, memberCookieName);
-  if (!token) return res.status(401).json({ message: "Member authentication required" });
+  const token = getMemberCookie(req);
+  if (!token) return res.status(401).json({ message: "Medlemsinnlogging kreves" });
   const hashed = tokenHash(token);
   const session = readStore().sessions.find((item) =>
     item.kind === "member" && item.tokenHash === hashed && Date.parse(item.expiresAt) > Date.now()
   );
   const member = session && readStore().members.find((item) => item.id === session.memberId && item.status === "active");
-  if (!member) return res.status(401).json({ message: "Member authentication required" });
+  if (!member) return res.status(401).json({ message: "Medlemsinnlogging kreves" });
   req.member = member;
+  req.sessionTokenHash = hashed;
   next();
 }
 
@@ -87,6 +137,32 @@ function responseError(res, message, status = 400, fields) {
   return res.status(status).json({ message, ...(fields ? { fields } : {}) });
 }
 
+function asyncRoute(handler) {
+  return (req, res, next) => handler(req, res).catch(next);
+}
+
+function handleSubmissionError(error, res, next) {
+  if (typeof error?.message === "string" && error.message.startsWith(FORM_DATA_ERROR_PREFIX)) {
+    return responseError(res, error.message);
+  }
+  next(error);
+}
+
+function registrationValues(res, rawValues, flow, invalidMessage, fileCount = 0) {
+  if (!isRecord(rawValues)) {
+    responseError(res, invalidMessage);
+    return null;
+  }
+  const values = sanitizeValue(rawValues);
+  if (fileCount) values.__fileCount = fileCount;
+  const missing = checkRequired(values, flow);
+  if (missing.length) {
+    responseError(res, "Obligatoriske felt mangler", 400, missing);
+    return null;
+  }
+  return values;
+}
+
 function recordMemberLoginFailure(key) {
   if (!failedMemberLogins.has(key) && failedMemberLogins.size >= 5000) {
     failedMemberLogins.delete(failedMemberLogins.keys().next().value);
@@ -97,233 +173,24 @@ function recordMemberLoginFailure(key) {
   failedMemberLogins.set(key, current);
 }
 
-function isRecord(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+function validActivationIdentifier(identifier) {
+  return typeof identifier === "string" &&
+    (validEmail(normalizeEmail(identifier)) || Boolean(normalizedPhone(identifier)));
 }
 
-function sanitizeValue(value, depth = 0, root = true) {
-  if (depth > 6) throw new Error("Form data is nested too deeply");
-  if (typeof value === "string") return value.trim().slice(0, 2000);
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (Array.isArray(value)) {
-    if (value.length > 20) throw new Error("Form data contains too many items");
-    return value.map((item) => sanitizeValue(item, depth + 1, false));
-  }
-  if (isRecord(value)) {
-    const output = {};
-    for (const [key, item] of Object.entries(value)) {
-      if (!/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(key) ||
-          ["__proto__", "prototype", "constructor", "passwordHash", "activationTokenHash", "id", "status", "createdAt"].includes(key) ||
-          (!root && key === "password")) {
-        continue;
-      }
-      output[key] = sanitizeValue(item, depth + 1, false);
-    }
-    return output;
-  }
-  if (value === null || value === undefined) return "";
-  throw new Error("Form data values must be strings, booleans, numbers, arrays, or objects");
-}
-
-function fieldValue(values, flow, field) {
-  if (field === "files") return values.__fileCount || 0;
-  if (flow === "regular" && field.startsWith("person.")) {
-    return values.person?.[field.slice("person.".length)] ?? values[field.slice("person.".length)];
-  }
-  if (flow === "minor" && field.startsWith("parent.")) {
-    return values.parents?.[0]?.[field.slice("parent.".length)];
-  }
-  if (field.startsWith("localGroup.")) {
-    return values.localGroup?.[field.slice("localGroup.".length)] ?? values[field.slice("localGroup.".length)];
-  }
-  return field.split(".").reduce((value, part) => value?.[part], values);
-}
-
-function checkRequired(values, flow) {
-  const config = readStore().config;
-  const required = [
-    ...(config.requiredFields?.[flow] || []),
-    ...(config.additionalFields?.[flow] || [])
-      .filter((field) => field.required)
-      .map((field) => field.id)
-  ];
-  return required
-    .filter((field) => flow !== "minor" || field !== "password")
-    .filter((field) => field !== "confirmPassword")
-    .filter((field) => {
-      const additional = (config.additionalFields?.[flow] || []).find((item) => item.id === field);
-      if (additional?.type === "section") return false;
-      if (additional?.type === "file") return !(values.__fileCount > 0);
-      const value = fieldValue(values, flow, field);
-      return typeof value === "string" ? !value.trim() : value === undefined || value === null || value === false;
-    });
-}
-
-function validateOptions(values, flow) {
-  const fields = readStore().config.options?.[flow] || {};
-  for (const [field, allowed] of Object.entries(fields)) {
-    if (!Array.isArray(allowed)) continue;
-    const value = fieldValue(values, flow, field);
-    if (value && !allowed.includes(value)) return `${field} must be one of the configured options`;
-  }
-  for (const field of readStore().config.additionalFields?.[flow] || []) {
-    const value = values[field.id];
-    if (value === undefined || value === "") continue;
-    if (field.type === "select" && !field.options.includes(value)) {
-      return `${field.id} must be one of the configured options`;
-    }
-    if (field.type === "checkbox" && typeof value !== "boolean") {
-      return `${field.id} must be a checkbox value`;
-    }
-    if (["text", "textarea", "email", "phone", "date", "select"].includes(field.type) &&
-        typeof value !== "string") {
-      return `${field.id} must be text`;
-    }
-    if (field.type === "email" && !validEmail(normalizeEmail(value))) {
-      return `${field.id} must be a valid email address`;
-    }
-    if (field.type === "phone" && !normalizedPhone(value)) {
-      return `${field.id} must be a valid phone number`;
-    }
-    if (field.type === "date" && value && !validDateString(value)) {
-      return `${field.id} must be a valid date`;
-    }
-  }
-  return null;
-}
-
-function ageOnDate(dateString) {
-  if (typeof dateString !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return null;
-  const date = new Date(`${dateString}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dateString) return null;
-  const today = new Date();
-  let age = today.getUTCFullYear() - date.getUTCFullYear();
-  if (today.getUTCMonth() < date.getUTCMonth() ||
-      (today.getUTCMonth() === date.getUTCMonth() && today.getUTCDate() < date.getUTCDate())) age -= 1;
-  return age < 0 ? null : age;
-}
-
-function validDateString(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-function validateRegion(group, flow) {
-  const regions = readStore().config.regions || [];
-  if (!regions.length) return null;
-  const groupRequired = (readStore().config.requiredFields?.[flow] || [])
-    .some((field) => field === "localGroup.region" || field === "localGroup.chapter");
-  if (!group?.region && !group?.chapter && !groupRequired) return null;
-  const region = regions.find((item) => item.name === group?.region);
-  if (!region) return "Select a configured region";
-  if ((groupRequired || group.region || group.chapter) && !region.chapters.includes(group.chapter)) {
-    return "Select a configured chapter for this region";
-  }
-  return null;
-}
-
-function groupFrom(values) {
-  return {
-    region: values.localGroup?.region || values.region || "",
-    chapter: values.localGroup?.chapter || values.chapter || ""
-  };
-}
-
-function personEmail(person, label) {
-  const email = normalizeEmail(person?.email);
-  return validEmail(email) ? { email } : { error: `${label} must be a valid email address` };
-}
-
-function normalizeAddress(value) {
-  return {
-    street: value?.street || "",
-    postalCode: value?.postalCode || "",
-    city: value?.city || ""
-  };
-}
-
-function regularProfile(values) {
-  const person = values.person || {
-    firstName: values.firstName,
-    middleName: values.middleName,
-    lastName: values.lastName,
-    gender: values.gender,
-    email: values.email,
-    phone: values.phone
-  };
-  return {
-    birthDate: values.birthDate,
-    person: { ...person, email: normalizeEmail(person.email) },
-    address: normalizeAddress(values.address),
-    localGroup: groupFrom(values)
-  };
-}
-
-function memberEmail(member) {
-  return member.email || member.profile?.person?.email || member.profile?.child?.email ||
-    member.profile?.recipient?.email || member.profile?.applicant?.email ||
-    member.profile?.email || "";
-}
-
-function memberPhone(member) {
-  return member.phone || member.profile?.person?.phone || member.profile?.child?.phone ||
-    member.profile?.recipient?.phone || member.profile?.applicant?.phone ||
-    member.profile?.phone || "";
-}
-
-function normalizedPhone(phone) {
-  if (typeof phone !== "string" || !/^\+?[0-9().\s-]+$/.test(phone)) return "";
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 7 && digits.length <= 15 ? digits : "";
-}
-
-function validatePhone(phone, label) {
-  if (!normalizedPhone(phone)) return `${label} must be a valid phone number`;
-  return null;
-}
-
-function memberConflict(state, email, phone, excludedMemberId = "") {
-  const normalized = normalizedPhone(phone);
-  return state.members.some((item) =>
-    item.id !== excludedMemberId &&
-    ((email && memberEmail(item) === email) ||
-      (normalized && normalizedPhone(memberPhone(item)) === normalized))
-  );
-}
-
-function pendingGiftConflict(state, email, phone) {
-  const normalized = normalizedPhone(phone);
-  return state.applications.some((item) => item.type === "gift" && item.status === "pending_activation" &&
-    Date.parse(item.activationExpiresAt) > Date.now() &&
-    ((email && item.profile?.recipient?.email === email) ||
-      (normalized && normalizedPhone(item.profile?.recipient?.phone) === normalized)));
-}
-
-function contactMatches(identifier, email, phone) {
-  const normalizedEmail = normalizeEmail(identifier);
-  if (validEmail(normalizedEmail) && normalizeEmail(email) === normalizedEmail) return true;
-  const normalized = normalizedPhone(identifier);
-  return Boolean(normalized && normalizedPhone(phone) === normalized);
+function activationIsEligible(record, type) {
+  const isPending = record.status === "pending_activation" ||
+    (type === "minor" && record.status === "active");
+  const expiresAt = type === "gift" ? record.activationExpiresAt : record.credentialSetupExpiresAt;
+  return record.type === type && isPending && Date.parse(expiresAt) > Date.now();
 }
 
 function activationTarget(state, type, token) {
+  const isGift = type === "gift";
+  const records = isGift ? state.applications : state.members;
+  const tokenField = isGift ? "activationTokenHash" : "credentialSetupTokenHash";
   const digest = tokenHash(token);
-  if (type === "gift") {
-    return state.applications.find((item) =>
-      item.type === "gift" &&
-      item.status === "pending_activation" &&
-      item.activationTokenHash === digest &&
-      Date.parse(item.activationExpiresAt) > Date.now()
-    );
-  }
-  return state.members.find((item) =>
-    item.type === type &&
-    (type === "minor" ? item.status === "pending_activation" || item.status === "active" : item.status === "pending_activation") &&
-    item.credentialSetupTokenHash === digest &&
-    Date.parse(item.credentialSetupExpiresAt) > Date.now()
-  );
+  return records.find((item) => activationIsEligible(item, type) && item[tokenField] === digest);
 }
 
 function activationContact(record, type) {
@@ -335,15 +202,9 @@ function activationContact(record, type) {
 }
 
 function activationLookupTarget(state, type, identifier) {
-  const eligible = type === "gift"
-    ? state.applications.filter((item) => item.type === "gift" && item.status === "pending_activation" && Date.parse(item.activationExpiresAt) > Date.now())
-    : state.members.filter((item) =>
-      item.type === type &&
-      (type === "minor" ? item.status === "pending_activation" || item.status === "active" : item.status === "pending_activation") &&
-      item.credentialSetupTokenHash &&
-      Date.parse(item.credentialSetupExpiresAt) > Date.now()
-    );
-  return eligible.find((item) => {
+  const records = type === "gift" ? state.applications : state.members;
+  return records.find((item) => {
+    if (!activationIsEligible(item, type) || (type !== "gift" && !item.credentialSetupTokenHash)) return false;
     const contact = activationContact(item, type);
     return contactMatches(identifier, contact.email, contact.phone);
   });
@@ -360,6 +221,8 @@ function checkActivationRateLimit(req, identifier) {
   return key;
 }
 
+router.post(["/regular", "/minor", "/gift", "/craft", "/custom/:formId"], registrationLimit);
+
 router.get("/config", (req, res) => {
   res.json(publicConfig(readStore().config));
 });
@@ -367,14 +230,13 @@ router.get("/config", (req, res) => {
 router.post("/activation/lookup", (req, res) => {
   const { type, identifier } = req.body || {};
   const key = checkActivationRateLimit(req, identifier);
-  if (!key) return responseError(res, "Too many attempts. Try again later.", 429);
+  if (!key) return responseError(res, "For mange forsøk. Prøv igjen senere.", 429);
   const validType = ["gift", "minor", "craft"].includes(type);
-  const validIdentifier = typeof identifier === "string" &&
-    (validEmail(normalizeEmail(identifier)) || normalizedPhone(identifier));
+  const validIdentifier = validActivationIdentifier(identifier);
   if (!validType || !validIdentifier ||
       !activationLookupTarget(readStore(), type, identifier)) {
     recordMemberLoginFailure(key);
-    return responseError(res, "We could not verify those contact details. Check them and try again.", 400);
+    return responseError(res, "Vi kunne ikke bekrefte kontaktopplysningene. Kontroller dem og prøv igjen.", 400);
   }
   res.setHeader("Cache-Control", "no-store");
   res.json({ found: true });
@@ -383,10 +245,9 @@ router.post("/activation/lookup", (req, res) => {
 router.post("/activation/verify", (req, res) => {
   const { type, identifier, token } = req.body || {};
   const key = checkActivationRateLimit(req, identifier);
-  if (!key) return responseError(res, "Too many attempts. Try again later.", 429);
+  if (!key) return responseError(res, "For mange forsøk. Prøv igjen senere.", 429);
   const validType = ["gift", "minor", "craft"].includes(type);
-  const validIdentifier = typeof identifier === "string" &&
-    (validEmail(normalizeEmail(identifier)) || normalizedPhone(identifier));
+  const validIdentifier = validActivationIdentifier(identifier);
   const validToken = typeof token === "string" && /^[A-Za-z0-9_-]{30,60}$/.test(token);
   const target = validType && validIdentifier && validToken
     ? activationTarget(readStore(), type, token)
@@ -394,7 +255,7 @@ router.post("/activation/verify", (req, res) => {
   const contact = target && activationContact(target, type);
   if (!target || !contactMatches(identifier, contact.email, contact.phone)) {
     recordMemberLoginFailure(key);
-    return responseError(res, "The activation code or contact details are invalid or expired.", 400);
+    return responseError(res, "Aktiveringskoden eller kontaktopplysningene er ugyldige eller utløpt.", 400);
   }
   failedMemberLogins.delete(key);
   res.setHeader("Cache-Control", "no-store");
@@ -410,118 +271,450 @@ router.post("/activation/verify", (req, res) => {
   res.json({ verified: true });
 });
 
-router.post("/login", async (req, res, next) => {
-  try {
-    const email = normalizeEmail(req.body?.email).slice(0, 254);
-    const password = req.body?.password;
-    const key = `${req.ip}:${email}`;
-    const attempts = failedMemberLogins.get(key);
-    if (attempts && attempts.count >= 10 && attempts.lockedUntil > Date.now()) {
-      return responseError(res, "Too many login attempts; try again later", 429);
-    }
-    const member = readStore().members.find((item) => memberEmail(item) === email && item.status === "active");
-    const passwordIsValid = typeof password === "string" &&
-      password.length >= minimumPasswordLength && password.length <= 200;
-    const passwordMatches = await verifyPassword(
-      typeof password === "string" ? password.slice(0, 200) : "",
-      member?.passwordHash || dummyPasswordHash
-    );
-    if (!(validEmail(email) && passwordIsValid && passwordMatches)) {
-      recordMemberLoginFailure(key);
-      return responseError(res, "Invalid email or password", 401);
-    }
-    failedMemberLogins.delete(key);
-    const token = createToken();
-    const expiresAt = new Date(Date.now() + memberSessionLifetimeMs).toISOString();
-    await updateStore((state) => {
-      state.sessions = state.sessions.filter((session) => Date.parse(session.expiresAt) > Date.now());
-      state.sessions.push({ kind: "member", tokenHash: tokenHash(token), memberId: member.id, expiresAt });
-    });
-    res.cookie(memberCookieName, token, memberCookieOptions());
-    res.json({ message: "Signed in", member: safeMember(member) });
-  } catch (error) {
-    next(error);
+router.post("/login", asyncRoute(async (req, res) => {
+  const email = normalizeEmail(req.body?.email).slice(0, 254);
+  const password = req.body?.password;
+  const key = `${req.ip}:${email}`;
+  const attempts = failedMemberLogins.get(key);
+  if (attempts && attempts.count >= 10 && attempts.lockedUntil > Date.now()) {
+    return responseError(res, "For mange innloggingsforsøk. Prøv igjen senere.", 429);
   }
-});
+  const member = readStore().members.find((item) => memberEmail(item) === email && item.status === "active");
+  const passwordIsValid = typeof password === "string" &&
+    password.length >= minimumPasswordLength && password.length <= 200;
+  const passwordMatches = await verifyPassword(
+    typeof password === "string" ? password.slice(0, 200) : "",
+    member?.passwordHash || dummyPasswordHash
+  );
+  if (!(validEmail(email) && passwordIsValid && passwordMatches)) {
+    recordMemberLoginFailure(key);
+    return responseError(res, "Ugyldig e-postadresse eller passord", 401);
+  }
+  failedMemberLogins.delete(key);
+  const token = createToken();
+  const expiresAt = new Date(Date.now() + memberSessionLifetimeMs).toISOString();
+  await updateStore((state) => {
+    state.sessions = state.sessions.filter((session) => Date.parse(session.expiresAt) > Date.now());
+    state.sessions.push({ kind: "member", tokenHash: tokenHash(token), memberId: member.id, expiresAt });
+  });
+  res.cookie(memberCookieName, token, memberCookieOptions());
+  res.json({ message: "Logget inn", member: safeMember(member) });
+}));
 
 router.get("/me", requireMember, (req, res) => {
   res.json({ authenticated: true, member: safeMember(req.member) });
 });
 
-router.post("/logout", async (req, res, next) => {
-  try {
-    const token = getCookie(req, memberCookieName);
-    if (token) {
-      const hashed = tokenHash(token);
-      await updateStore((state) => {
-        state.sessions = state.sessions.filter((session) => session.tokenHash !== hashed);
-      });
-    }
-    res.clearCookie(memberCookieName, { ...memberCookieOptions(), maxAge: undefined });
-    res.json({ message: "Signed out" });
-  } catch (error) {
-    next(error);
-  }
-});
+const passwordLengthError = (password) =>
+  typeof password === "string" && password.length >= minimumPasswordLength && password.length <= 200
+    ? ""
+    : `Passordet må være mellom ${minimumPasswordLength} og 200 tegn`;
 
-router.post("/craft/activate/:token", async (req, res, next) => {
-  try {
-    const token = req.params.token;
-    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) {
-      return responseError(res, "Activation link is invalid or expired", 400);
-    }
-    const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
-    const key = checkActivationRateLimit(req, identifier);
-    if (!key) return responseError(res, "Too many attempts. Try again later.", 429);
-    if (!identifier || !(validEmail(normalizeEmail(identifier)) || normalizedPhone(identifier))) {
-      return responseError(res, "Enter a valid email address or phone number");
-    }
-    const password = req.body?.password;
-    if (typeof password !== "string" ||
-        password.length < minimumPasswordLength || password.length > 200) {
-      return responseError(res, `Password must be between ${minimumPasswordLength} and 200 characters`);
-    }
-    const member = activationTarget(readStore(), "craft", token);
-    const contact = member && activationContact(member, "craft");
-    if (!member || !contactMatches(identifier, contact.email, contact.phone)) {
-      recordMemberLoginFailure(key);
-      return responseError(res, "Activation link is invalid, expired, or already used", 400);
-    }
-    const passwordHash = await hashPassword(password);
-    const activated = await updateStore((state) => {
-      const current = activationTarget(state, "craft", token);
-      const currentContact = current && activationContact(current, "craft");
-      if (!current || !contactMatches(identifier, currentContact.email, currentContact.phone)) return false;
-      current.passwordHash = passwordHash;
-      current.status = "active";
-      delete current.credentialSetupTokenHash;
-      delete current.credentialSetupExpiresAt;
-      return true;
-    });
-    if (!activated) {
-      recordMemberLoginFailure(key);
-      return responseError(res, "Activation link is invalid, expired, or already used", 409);
-    }
-    failedMemberLogins.delete(key);
-    res.json({ message: "Craft membership activated" });
-  } catch (error) {
-    next(error);
+const findAccountByEmail = (state, email) =>
+  state.admins.find((admin) => admin.email === email && admin.passwordHash) ||
+  state.members.find((member) => memberEmail(member) === email && member.status === "active");
+
+const sessionOwnedBy = (account) => (session) =>
+  session.kind === "admin" ? session.email === account.email : session.memberId === account.id;
+
+router.post("/password/forgot", passwordLimit, asyncRoute(async (req, res) => {
+  const email = normalizeEmail(req.body?.email).slice(0, 254);
+  const reply = { message: "Hvis e-postadressen er registrert, har vi sendt en lenke for å velge nytt passord." };
+  if (!validEmail(email)) return res.json(reply);
+  if (!mailConfigured()) return responseError(res, "E-postutsending er ikke konfigurert. Kontakt administrator.", 503);
+  const token = createToken();
+  const found = await updateStore((state) => {
+    const account = findAccountByEmail(state, email);
+    if (!account) return false;
+    account.passwordResetTokenHash = tokenHash(token);
+    account.passwordResetExpiresAt = new Date(Date.now() + passwordResetLifetimeMs).toISOString();
+    return true;
+  });
+  if (found) {
+    await sendLinkMail(email, {
+      subject: "Velg nytt passord",
+      intro: "Bruk lenken innen 30 minutter for å velge nytt passord",
+      linkText: "Velg nytt passord",
+      link: frontendLink(`/min-side/nytt-passord?token=${encodeURIComponent(token)}`),
+      outro: "Hvis du ikke ba om dette, kan du se bort fra e-posten."
+    }).catch((mailError) => console.error("Kunne ikke sende e-post for nytt passord:", mailError.message));
   }
-});
+  res.json(reply);
+}));
+
+router.post("/password/reset", passwordLimit, asyncRoute(async (req, res) => {
+  const { token, password } = req.body || {};
+  const lengthError = passwordLengthError(password);
+  if (lengthError) return responseError(res, lengthError);
+  if (typeof token !== "string" || !/^[A-Za-z0-9_-]{30,60}$/.test(token)) {
+    return responseError(res, "Lenken er ugyldig eller utløpt.");
+  }
+  const hashedToken = tokenHash(token);
+  const passwordHash = await hashPassword(password);
+  const reset = await updateStore((state) => {
+    const account = [...state.admins, ...state.members].find((item) =>
+      item.passwordResetTokenHash === hashedToken && Date.parse(item.passwordResetExpiresAt) > Date.now());
+    if (!account) return false;
+    account.passwordHash = passwordHash;
+    delete account.passwordResetTokenHash;
+    delete account.passwordResetExpiresAt;
+    state.sessions = state.sessions.filter((session) => !sessionOwnedBy(account)(session));
+    return true;
+  });
+  if (!reset) return responseError(res, "Lenken er ugyldig eller utløpt.");
+  res.json({ message: "Passordet er endret. Du kan nå logge inn." });
+}));
+
+export async function changePassword(req, res, findAccount) {
+  const { currentPassword, newPassword } = req.body || {};
+  const lengthError = passwordLengthError(newPassword);
+  if (lengthError) return responseError(res, lengthError);
+  const current = findAccount(readStore());
+  const matches = typeof currentPassword === "string" &&
+    await verifyPassword(currentPassword.slice(0, 200), current?.passwordHash || dummyPasswordHash);
+  if (!current || !matches) return responseError(res, "Nåværende passord er feil", 401);
+  const passwordHash = await hashPassword(newPassword);
+  await updateStore((state) => {
+    const account = findAccount(state);
+    account.passwordHash = passwordHash;
+    state.sessions = state.sessions.filter((session) =>
+      !sessionOwnedBy(account)(session) || session.tokenHash === req.sessionTokenHash);
+  });
+  res.json({ message: "Passordet er endret" });
+}
+
+router.post("/me/password", passwordLimit, requireMember, asyncRoute((req, res) =>
+  changePassword(req, res, (state) => state.members.find((item) => item.id === req.member.id))
+));
+
+router.delete("/me", passwordLimit, requireMember, asyncRoute(async (req, res) => {
+  const { password } = req.body || {};
+  const matches = typeof password === "string" &&
+    await verifyPassword(password.slice(0, 200), req.member.passwordHash || dummyPasswordHash);
+  if (!matches) return responseError(res, "Passordet er feil", 401);
+  await updateStore((state) => {
+    state.members = state.members.filter((item) => item.id !== req.member.id);
+    state.sessions = state.sessions.filter((session) => session.memberId !== req.member.id);
+    state.orders.filter((order) => order.memberId === req.member.id && order.status === "confirmed").forEach((order) => {
+      order.status = "cancelled";
+      order.cancelledAt = new Date().toISOString();
+    });
+  });
+  res.clearCookie(memberCookieName, { ...memberCookieOptions(), maxAge: undefined });
+  res.json({ message: "Medlemskapet er slettet" });
+}));
+
+router.post("/me/renew", requireMember, asyncRoute(async (req, res) => {
+  const member = await updateStore((state) => {
+    const stored = state.members.find((item) => item.id === req.member.id);
+    stored.validUntil = renewedValidUntil(stored);
+    stored.renewedAt = new Date().toISOString();
+    return stored;
+  });
+  res.json({ message: "Medlemskapet er fornyet", member: safeMember(member) });
+}));
+
+router.patch("/me/consents", requireMember, asyncRoute(async (req, res) => {
+  const { emailOffers, smsOffers } = req.body || {};
+  if (typeof emailOffers !== "boolean" || typeof smsOffers !== "boolean") {
+    return responseError(res, "emailOffers og smsOffers må være sant eller usant");
+  }
+  const member = await updateStore((state) => {
+    const stored = state.members.find((item) => item.id === req.member.id);
+    Object.assign(stored.profile, { emailOffers, smsOffers });
+    return stored;
+  });
+  res.json({ message: "Samtykkene er lagret", member: safeMember(member) });
+}));
+
+export async function sendProfileChangeLink(res, email, findOwner) {
+  if (!validEmail(normalizeEmail(email))) {
+    return responseError(res, "En gyldig e-postadresse kreves for å sende endringslenken", 400);
+  }
+  if (!mailConfigured()) {
+    return responseError(res, "E-postutsending er ikke konfigurert. Kontakt administrator.", 503);
+  }
+  const token = createToken();
+  const hashedToken = tokenHash(token);
+  const expiresAt = new Date(Date.now() + profileChangeLifetimeMs).toISOString();
+  const requestStatus = await updateStore((state) => {
+    const owner = findOwner(state);
+    if (!owner) return "missing";
+    if (owner.profileChangeRequestedAt &&
+        Date.now() - Date.parse(owner.profileChangeRequestedAt) < 60_000) return "rate-limited";
+    owner.profileChangeTokenHash = hashedToken;
+    owner.profileChangeExpiresAt = expiresAt;
+    owner.profileChangeRequestedAt = new Date().toISOString();
+    return "saved";
+  });
+  if (requestStatus === "missing") return responseError(res, "Kontoen ble ikke funnet.", 404);
+  if (requestStatus === "rate-limited") return responseError(res, "Vent ett minutt før du ber om en ny lenke.", 429);
+
+  try {
+    await sendProfileChangeEmail(email, token);
+  } catch (mailError) {
+    console.error("Could not send profile-change email:", mailError.message);
+    await updateStore((state) => {
+      const owner = findOwner(state);
+      if (owner?.profileChangeTokenHash === hashedToken) {
+        delete owner.profileChangeTokenHash;
+        delete owner.profileChangeExpiresAt;
+        delete owner.profileChangeRequestedAt;
+      }
+    });
+    return responseError(res, "Kunne ikke sende e-post. Kontroller e-postinnstillingene eller prøv igjen senere.", 502);
+  }
+  res.json({ message: "En lenke for å endre personopplysninger er sendt til e-postadressen din." });
+}
+
+router.post("/profile/change-request", requireMember, asyncRoute((req, res) =>
+  sendProfileChangeLink(res, memberEmail(req.member), (state) => state.members.find((item) => item.id === req.member.id))
+));
+
+const liveProfileChange = (owner, hashedToken) =>
+  owner?.profileChangeTokenHash === hashedToken && Date.parse(owner.profileChangeExpiresAt) > Date.now();
+
+router.get("/profile/change/:token", asyncRoute(async (req, res) => {
+  const { token } = req.params;
+  if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) {
+    return responseError(res, "Lenken er ugyldig eller utløpt.", 400);
+  }
+  const hashedToken = tokenHash(token);
+  const { members, admins } = readStore();
+  const adminAccount = admins.find((admin) => liveProfileChange(admin, hashedToken));
+  const isAdmin = Boolean(adminAccount);
+  const member = members.find((item) => liveProfileChange(item, hashedToken) && item.status === "active");
+  if (!isAdmin && !member) return responseError(res, "Lenken er ugyldig eller utløpt.", 400);
+  res.setHeader("Cache-Control", "no-store");
+  const { localGroup, ...editableProfile } = isAdmin ? adminProfile(adminAccount) : member.profile;
+  res.json({ type: isAdmin ? "admin" : member.type, profile: editableProfile });
+}));
+
+router.put("/profile/change/:token", asyncRoute((req, res) => saveMemberProfileChange(req, res)));
+
+const profileChangeFields = {
+  regular: {
+    contact: "person",
+    required: ["birthDate", "person.firstName", "person.lastName", "person.gender", "address.street", "address.postalCode", "address.city"]
+  },
+  minor: {
+    contact: "child",
+    required: ["child.firstName", "child.lastName", "child.gender", "child.birthDate", "address.street", "address.postalCode", "address.city"]
+  },
+  craft: {
+    contact: "applicant",
+    required: ["applicant.firstName", "applicant.lastName", "applicant.gender", "applicant.birthDate", "applicant.address.street", "applicant.address.postalCode", "applicant.address.city", "business.name", "business.organizationNumber", "business.address.street", "business.address.postalCode", "business.address.city", "business.phone", "business.email"]
+  },
+  gift: {
+    contact: "recipient",
+    required: ["recipient.firstName", "recipient.lastName", "recipient.gender", "recipient.birthDate", "recipient.address.street", "recipient.address.postalCode", "recipient.address.city"]
+  }
+};
+
+function firstMissingPath(profile, paths) {
+  return paths.find((fieldPath) => {
+    const value = fieldPath.split(".").reduce((current, key) => current?.[key], profile);
+    return typeof value !== "string" || !value.trim();
+  });
+}
+
+function saveAdminProfile(state, admin, cleanProfile) {
+  const missingPath = firstMissingPath(cleanProfile, [
+    "person.firstName", "person.lastName", "person.gender", "address.street", "address.postalCode", "address.city"
+  ]);
+  if (missingPath) return { error: `${missingPath} må fylles inn.`, status: 400 };
+  const email = personEmail(cleanProfile.person, "E-post");
+  const error = email.error || validatePhone(cleanProfile.person.phone, "Telefonnummer") ||
+    validateOptions(cleanProfile, "regular");
+  if (error) return { error, status: 400 };
+  if (memberConflict(state, email.email, cleanProfile.person.phone)) {
+    return { error: "E-postadressen eller telefonnummeret er allerede registrert på et medlemskap.", status: 409 };
+  }
+  admin.profile = {
+    person: { ...cleanProfile.person, email: email.email },
+    address: cleanProfile.address,
+    localGroup: admin.profile?.localGroup
+  };
+  delete admin.profileChangeTokenHash;
+  delete admin.profileChangeExpiresAt;
+  return { profile: adminProfile(admin) };
+}
+
+async function saveMemberProfileChange(req, res) {
+  const { token } = req.params;
+  if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "") || !isRecord(req.body?.profile)) {
+    return responseError(res, "Lenken eller opplysningene er ugyldige.", 400);
+  }
+  const hashedToken = tokenHash(token);
+  let cleanProfile;
+  try {
+    cleanProfile = sanitizeValue(req.body.profile);
+  } catch (error) {
+    if (error.message.startsWith(FORM_DATA_ERROR_PREFIX)) return responseError(res, error.message);
+    throw error;
+  }
+  if (!isRecord(cleanProfile)) return responseError(res, "Opplysningene må være et objekt.");
+
+  const result = await updateStore((state) => {
+    const admin = state.admins.find((item) => liveProfileChange(item, hashedToken));
+    if (admin) return saveAdminProfile(state, admin, cleanProfile);
+    const member = state.members.find((item) => liveProfileChange(item, hashedToken) && item.status === "active");
+    if (!member) return { error: "Lenken er ugyldig eller utløpt.", status: 400 };
+    const localGroup = member.profile?.localGroup;
+    delete cleanProfile.localGroup;
+
+    const profileFields = profileChangeFields[member.type] || profileChangeFields.gift;
+    const contact = cleanProfile[profileFields.contact];
+    const missingPath = firstMissingPath(cleanProfile, profileFields.required);
+    if (missingPath) return { error: `${missingPath} må fylles inn.`, status: 400 };
+    const contactEmail = personEmail(contact, "E-post");
+    if (contactEmail.error) return { error: contactEmail.error, status: 400 };
+    const phoneError = validatePhone(contact?.phone, "Telefonnummer");
+    if (phoneError) return { error: phoneError, status: 400 };
+    const optionsError = validateOptions(cleanProfile, member.type);
+    if (optionsError) return { error: optionsError, status: 400 };
+    if (memberConflict(state, contactEmail.email, contact.phone, member.id) ||
+        pendingGiftConflict(state, contactEmail.email, contact.phone)) {
+      return { error: "E-postadressen eller telefonnummeret er allerede registrert på et annet medlemskap.", status: 409 };
+    }
+
+    if (member.type === "regular") {
+      const age = ageOnDate(cleanProfile.birthDate);
+      if (age === null || age < 18 || age > 120) return { error: "Fødselsdatoen må vise at medlemmet er mellom 18 og 120 år.", status: 400 };
+    }
+    if (member.type === "minor") {
+      const age = ageOnDate(contact?.birthDate);
+      if (age === null || age >= 18) return { error: "Barnets fødselsdato må vise at medlemmet er under 18 år.", status: 400 };
+      if (!Array.isArray(cleanProfile.parents) || cleanProfile.parents.length < 1) {
+        return { error: "Minst én foresatt må være registrert.", status: 400 };
+      }
+      for (const [index, parent] of cleanProfile.parents.entries()) {
+        if (!parent?.firstName?.trim() || !parent?.lastName?.trim()) {
+          return { error: `Foresatt ${index + 1} må ha fornavn og etternavn.`, status: 400 };
+        }
+        const parentEmail = personEmail(parent, `Foresatt ${index + 1} sin e-post`);
+        const parentPhoneError = validatePhone(parent?.phone, `Foresatt ${index + 1} sitt telefonnummer`);
+        if (parentEmail.error) return { error: parentEmail.error, status: 400 };
+        if (parentPhoneError) return { error: parentPhoneError, status: 400 };
+        const allowedGenders = readStore().config.options?.minor?.["parent.gender"];
+        if (Array.isArray(allowedGenders) && !allowedGenders.includes(parent.gender)) {
+          return { error: `Foresatt ${index + 1} må ha et gyldig kjønn.`, status: 400 };
+        }
+      }
+      if (cleanProfile.consent !== true) return { error: "Samtykke fra foresatt må være bekreftet.", status: 400 };
+    }
+    if (member.type === "gift") {
+      const age = ageOnDate(contact?.birthDate);
+      if (age === null || age < 18 || age > 120) return { error: "Fødselsdatoen til mottakeren må vise en alder mellom 18 og 120 år.", status: 400 };
+    }
+    if (member.type === "craft") {
+      const businessEmail = personEmail(cleanProfile.business, "Bedriftens e-post");
+      const businessPhoneError = validatePhone(cleanProfile.business?.phone, "Bedriftens telefonnummer");
+      if (businessEmail.error) return { error: businessEmail.error, status: 400 };
+      if (businessPhoneError) return { error: businessPhoneError, status: 400 };
+      cleanProfile.business.email = businessEmail.email;
+    }
+
+    contact.email = contactEmail.email;
+    if (Object.hasOwn(member, "email")) member.email = contactEmail.email;
+    if (Object.hasOwn(member, "phone")) member.phone = contact.phone;
+    cleanProfile.localGroup = localGroup;
+    member.profile = cleanProfile;
+    delete member.profileChangeTokenHash;
+    delete member.profileChangeExpiresAt;
+    return { member: safeMember(member) };
+  });
+  if (result.error) return responseError(res, result.error, result.status);
+  res.json({ message: "Personopplysningene er oppdatert.", ...result });
+}
+
+router.patch("/me/local-group", requireMember, asyncRoute((req, res) =>
+  saveLocalGroup(req, res, (state) => state.members.find((item) => item.id === req.member.id), (member) => ({ member: safeMember(member) }))
+));
+
+export async function saveLocalGroup(req, res, findOwner, publicOwner) {
+  const region = typeof req.body?.region === "string" ? req.body.region.trim() : "";
+  const chapter = typeof req.body?.chapter === "string" ? req.body.chapter.trim() : "";
+  if (!region || !chapter) return responseError(res, "Velg både region og lokallag.");
+  const regionAvailable = (readStore().config.regions || []).some((item) =>
+    item.name === region && item.chapters.includes(chapter)
+  );
+  if (!regionAvailable) return responseError(res, "Velg en tilgjengelig region og et lokallag i regionen.");
+  const owner = await updateStore((state) => {
+    const currentOwner = findOwner(state);
+    if (!currentOwner) return null;
+    currentOwner.profile = { ...currentOwner.profile, localGroup: { region, chapter } };
+    return publicOwner(currentOwner);
+  });
+  if (!owner) return responseError(res, "Kontoen ble ikke funnet.", 404);
+  res.json({ message: "Lokallaget er oppdatert.", ...owner });
+}
+
+router.post("/logout", asyncRoute(async (req, res) => {
+  const token = getMemberCookie(req);
+  if (token) {
+    const hashed = tokenHash(token);
+    await updateStore((state) => {
+      state.sessions = state.sessions.filter((session) => session.tokenHash !== hashed);
+    });
+  }
+  res.clearCookie(memberCookieName, { ...memberCookieOptions(), maxAge: undefined });
+  res.json({ message: "Logget ut" });
+}));
+
+router.post("/craft/activate/:token", asyncRoute(async (req, res) => {
+  const token = req.params.token;
+  if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) {
+    return responseError(res, "Aktiveringslenken er ugyldig eller utløpt", 400);
+  }
+  const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
+  const key = checkActivationRateLimit(req, identifier);
+  if (!key) return responseError(res, "For mange forsøk. Prøv igjen senere.", 429);
+  if (!validActivationIdentifier(identifier)) {
+    return responseError(res, "Oppgi en gyldig e-postadresse eller et gyldig telefonnummer");
+  }
+  const password = req.body?.password;
+  if (typeof password !== "string" ||
+      password.length < minimumPasswordLength || password.length > 200) {
+    return responseError(res, `Passordet må være mellom ${minimumPasswordLength} og 200 tegn`);
+  }
+  const member = activationTarget(readStore(), "craft", token);
+  const contact = member && activationContact(member, "craft");
+  if (!member || !contactMatches(identifier, contact.email, contact.phone)) {
+    recordMemberLoginFailure(key);
+    return responseError(res, "Aktiveringslenken er ugyldig, utløpt eller allerede brukt", 400);
+  }
+  const passwordHash = await hashPassword(password);
+  const activated = await updateStore((state) => {
+    const current = activationTarget(state, "craft", token);
+    const currentContact = current && activationContact(current, "craft");
+    if (!current || !contactMatches(identifier, currentContact.email, currentContact.phone)) return false;
+    current.passwordHash = passwordHash;
+    current.status = "active";
+    delete current.credentialSetupTokenHash;
+    delete current.credentialSetupExpiresAt;
+    return true;
+  });
+  if (!activated) {
+    recordMemberLoginFailure(key);
+    return responseError(res, "Aktiveringslenken er ugyldig, utløpt eller allerede brukt", 409);
+  }
+  failedMemberLogins.delete(key);
+  res.json({ message: "Håndverksmedlemskapet er aktivert" });
+}));
 
 router.post("/regular", async (req, res, next) => {
   try {
-    if (!readStore().config.membershipTypes.regular) return responseError(res, "This membership type is unavailable", 403);
-    if (!isRecord(req.body)) return responseError(res, "Request body must be an object");
-    const values = sanitizeValue(req.body);
-    const missing = checkRequired(values, "regular");
-    if (missing.length) return responseError(res, "Required fields are missing", 400, missing);
+    if (!readStore().config.membershipTypes.regular) return responseError(res, "Denne medlemskapstypen er ikke tilgjengelig", 403);
+    const values = registrationValues(res, req.body, "regular", "Forespørselen må være et objekt");
+    if (!values) return;
     const age = ageOnDate(values.birthDate);
-    if (age === null || age < 18) return responseError(res, "Regular members must be at least 18; enter a valid birthDate");
-    const profile = regularProfile(values);
-    const emailResult = personEmail(profile.person, "Email");
+    if (age === null || age < 18) return responseError(res, "Ordinære medlemmer må være minst 18 år. Oppgi en gyldig birthDate");
+    if (values.termsAccepted !== true) return responseError(res, termsRequiredMessage);
+    const profile = { ...regularProfile(values), ...agreementsFrom(values) };
+    const emailResult = personEmail(profile.person, "E-postadresse");
     if (emailResult.error) return responseError(res, emailResult.error);
-    const phoneError = validatePhone(profile.person.phone, "Phone");
+    const phoneError = validatePhone(profile.person.phone, "Telefonnummer");
     if (phoneError) return responseError(res, phoneError);
     const optionsError = validateOptions(values, "regular");
     if (optionsError) return responseError(res, optionsError);
@@ -529,7 +722,7 @@ router.post("/regular", async (req, res, next) => {
     if (regionError) return responseError(res, regionError);
     if (typeof values.password !== "string" ||
         values.password.length < minimumPasswordLength || values.password.length > 200) {
-      return responseError(res, `Password must be between ${minimumPasswordLength} and 200 characters`);
+      return responseError(res, `Passordet må være mellom ${minimumPasswordLength} og 200 tegn`);
     }
     const member = {
       id: randomUUID(),
@@ -545,38 +738,36 @@ router.post("/regular", async (req, res, next) => {
       state.members.push(member);
       return false;
     });
-    if (exists) return responseError(res, "The email or phone number is already associated with a member or pending gift", 409);
-    res.status(201).json({ message: "Membership registered", id: member.id });
+    if (exists) return responseError(res, "E-postadressen eller telefonnummeret er allerede knyttet til et medlemskap eller en ventende gaveregistrering", 409);
+    res.status(201).json({ message: "Medlemskapet er registrert", id: member.id });
   } catch (error) {
-    if (error.message.startsWith("Form data")) return responseError(res, error.message);
-    next(error);
+    handleSubmissionError(error, res, next);
   }
 });
 
 router.post("/minor", async (req, res, next) => {
   try {
-    if (!readStore().config.membershipTypes.minor) return responseError(res, "This membership type is unavailable", 403);
-    if (!isRecord(req.body)) return responseError(res, "Request body must be an object");
-    const values = sanitizeValue(req.body);
-    const missing = checkRequired(values, "minor");
-    if (missing.length) return responseError(res, "Required fields are missing", 400, missing);
+    if (!readStore().config.membershipTypes.minor) return responseError(res, "Denne medlemskapstypen er ikke tilgjengelig", 403);
+    const values = registrationValues(res, req.body, "minor", "Forespørselen må være et objekt");
+    if (!values) return;
     if (!Array.isArray(values.parents) || values.parents.length < 1 || values.parents.length > 4) {
-      return responseError(res, "At least one parent or guardian is required");
+      return responseError(res, "Minst én forelder eller foresatt er påkrevd");
     }
     const age = ageOnDate(values.child?.birthDate);
-    if (age === null || age >= 18) return responseError(res, "Minor members must be under 18; enter a valid child.birthDate");
-    if (values.consent !== true) return responseError(res, "Guardian consent is required");
-    const childEmail = personEmail(values.child, "Child email");
+    if (age === null || age >= 18) return responseError(res, "Mindreårige medlemmer må være under 18 år. Oppgi en gyldig child.birthDate");
+    if (values.consent !== true) return responseError(res, "Samtykke fra foresatt er påkrevd");
+    if (values.termsAccepted !== true) return responseError(res, termsRequiredMessage);
+    const childEmail = personEmail(values.child, "Barnets e-postadresse");
     if (childEmail.error) return responseError(res, childEmail.error);
-    const childPhoneError = validatePhone(values.child?.phone, "Child phone");
+    const childPhoneError = validatePhone(values.child?.phone, "Barnets telefonnummer");
     if (childPhoneError) return responseError(res, childPhoneError);
     const optionsError = validateOptions(values, "minor");
     if (optionsError) return responseError(res, optionsError);
     for (const [index, parent] of values.parents.entries()) {
-      if (!parent?.firstName || !parent?.lastName) return responseError(res, `Parent ${index + 1} firstName and lastName are required`);
-      const parentEmail = personEmail(parent, `Parent ${index + 1} email`);
+      if (!parent?.firstName || !parent?.lastName) return responseError(res, `Foresatt ${index + 1} må ha fornavn og etternavn`);
+      const parentEmail = personEmail(parent, `E-postadressen til foresatt ${index + 1}`);
       if (parentEmail.error) return responseError(res, parentEmail.error);
-      const parentPhoneError = validatePhone(parent.phone, `Parent ${index + 1} phone`);
+      const parentPhoneError = validatePhone(parent.phone, `Telefonnummeret til foresatt ${index + 1}`);
       if (parentPhoneError) return responseError(res, parentPhoneError);
     }
     const regionError = validateRegion(groupFrom(values), "minor");
@@ -591,7 +782,8 @@ router.post("/minor", async (req, res, next) => {
         parents: values.parents.map((parent) => ({ ...parent, email: normalizeEmail(parent.email) })),
         address: normalizeAddress(values.address),
         localGroup: groupFrom(values),
-        consent: true
+        consent: true,
+        ...agreementsFrom(values)
       },
       credentialSetupTokenHash: tokenHash(credentialSetupToken),
       credentialSetupExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -603,82 +795,76 @@ router.post("/minor", async (req, res, next) => {
       state.members.push(member);
       return false;
     });
-    if (exists) return responseError(res, "The email or phone number is already associated with a member or pending gift", 409);
+    if (exists) return responseError(res, "E-postadressen eller telefonnummeret er allerede knyttet til et medlemskap eller en ventende gaveregistrering", 409);
     const frontendBase = (process.env.PUBLIC_FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
     res.status(201).json({
-      message: "Membership registered",
+      message: "Medlemskapet er registrert",
       id: member.id,
       activationUrl: `${frontendBase}/medlemskap?aktiver-mindreaarig=${encodeURIComponent(credentialSetupToken)}`
     });
   } catch (error) {
-    if (error.message.startsWith("Form data")) return responseError(res, error.message);
-    next(error);
+    handleSubmissionError(error, res, next);
   }
 });
 
-router.post("/minor/activate/:token", async (req, res, next) => {
-  try {
-    const token = req.params.token;
-    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) {
-      return responseError(res, "Activation link is invalid or expired", 400);
-    }
-    const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
-    const password = req.body?.password;
-    const key = checkActivationRateLimit(req, identifier);
-    if (!key) return responseError(res, "Too many attempts. Try again later.", 429);
-    if (!identifier || !(validEmail(normalizeEmail(identifier)) || normalizedPhone(identifier))) {
-      return responseError(res, "Enter a valid email address or phone number");
-    }
-    if (typeof password !== "string" ||
-        password.length < minimumPasswordLength || password.length > 200) {
-      return responseError(res, `Password must be between ${minimumPasswordLength} and 200 characters`);
-    }
-    const member = activationTarget(readStore(), "minor", token);
-    const contact = member && activationContact(member, "minor");
-    if (!member || !contactMatches(identifier, contact.email, contact.phone)) {
-      recordMemberLoginFailure(key);
-      return responseError(res, "Activation link is invalid, expired, or already used", 400);
-    }
-    const passwordHash = await hashPassword(password);
-    const activated = await updateStore((state) => {
-      const current = activationTarget(state, "minor", token);
-      const currentContact = current && activationContact(current, "minor");
-      if (!current || !contactMatches(identifier, currentContact.email, currentContact.phone)) return false;
-      current.passwordHash = passwordHash;
-      current.status = "active";
-      delete current.credentialSetupTokenHash;
-      delete current.credentialSetupExpiresAt;
-      return true;
-    });
-    if (!activated) {
-      recordMemberLoginFailure(key);
-      return responseError(res, "Activation link is invalid, expired, already used, or contact details do not match", 409);
-    }
-    failedMemberLogins.delete(key);
-    res.json({ message: "Minor membership login has been activated" });
-  } catch (error) {
-    next(error);
+router.post("/minor/activate/:token", asyncRoute(async (req, res) => {
+  const token = req.params.token;
+  if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) {
+    return responseError(res, "Aktiveringslenken er ugyldig eller utløpt", 400);
   }
-});
+  const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
+  const password = req.body?.password;
+  const key = checkActivationRateLimit(req, identifier);
+  if (!key) return responseError(res, "For mange forsøk. Prøv igjen senere.", 429);
+  if (!validActivationIdentifier(identifier)) {
+    return responseError(res, "Oppgi en gyldig e-postadresse eller et gyldig telefonnummer");
+  }
+  if (typeof password !== "string" ||
+      password.length < minimumPasswordLength || password.length > 200) {
+    return responseError(res, `Passordet må være mellom ${minimumPasswordLength} og 200 tegn`);
+  }
+  const member = activationTarget(readStore(), "minor", token);
+  const contact = member && activationContact(member, "minor");
+  if (!member || !contactMatches(identifier, contact.email, contact.phone)) {
+    recordMemberLoginFailure(key);
+    return responseError(res, "Aktiveringslenken er ugyldig, utløpt eller allerede brukt", 400);
+  }
+  const passwordHash = await hashPassword(password);
+  const activated = await updateStore((state) => {
+    const current = activationTarget(state, "minor", token);
+    const currentContact = current && activationContact(current, "minor");
+    if (!current || !contactMatches(identifier, currentContact.email, currentContact.phone)) return false;
+    current.passwordHash = passwordHash;
+    current.status = "active";
+    delete current.credentialSetupTokenHash;
+    delete current.credentialSetupExpiresAt;
+    return true;
+  });
+  if (!activated) {
+    recordMemberLoginFailure(key);
+    return responseError(res, "Aktiveringslenken er ugyldig, utløpt eller allerede brukt, eller kontaktopplysningene stemmer ikke", 409);
+  }
+  failedMemberLogins.delete(key);
+  res.json({ message: "Innlogging for medlemskap for mindreårig er aktivert" });
+}));
 
 router.post("/gift", async (req, res, next) => {
   try {
-    if (!readStore().config.membershipTypes.gift) return responseError(res, "Gift membership is unavailable", 403);
-    if (!isRecord(req.body)) return responseError(res, "Request body must be an object");
-    const values = sanitizeValue(req.body);
-    const missing = checkRequired(values, "gift");
-    if (missing.length) return responseError(res, "Required fields are missing", 400, missing);
+    if (!readStore().config.membershipTypes.gift) return responseError(res, "Gavemedlemskap er ikke tilgjengelig", 403);
+    const values = registrationValues(res, req.body, "gift", "Forespørselen må være et objekt");
+    if (!values) return;
+    if (values.termsAccepted !== true) return responseError(res, termsRequiredMessage);
     const purchaserAge = ageOnDate(values.purchaser?.birthDate);
-    if (purchaserAge === null || purchaserAge < 18) return responseError(res, "Gift purchasers must be at least 18; enter a valid purchaser.birthDate");
+    if (purchaserAge === null || purchaserAge < 18) return responseError(res, "Gavekjøperen må være minst 18 år. Oppgi en gyldig purchaser.birthDate");
     const recipientAge = ageOnDate(values.recipient?.birthDate);
-    if (recipientAge === null) return responseError(res, "A valid recipient.birthDate is required");
+    if (recipientAge === null) return responseError(res, "En gyldig recipient.birthDate er påkrevd");
     let guardian;
     if (recipientAge < 18) {
-      if (!isRecord(values.guardian)) return responseError(res, "A guardian is required when the gift recipient is under 18");
+      if (!isRecord(values.guardian)) return responseError(res, "En foresatt er påkrevd når gavemottakeren er under 18 år");
       if (!values.guardian.firstName || !values.guardian.lastName || !values.guardian.gender) {
-        return responseError(res, "Guardian firstName, lastName, and gender are required");
+        return responseError(res, "Foresattens fornavn, etternavn og kjønn er påkrevd");
       }
-      if (values.consent !== true) return responseError(res, "Guardian consent is required for a minor gift recipient");
+      if (values.consent !== true) return responseError(res, "Samtykke fra foresatt er påkrevd når gavemottakeren er mindreårig");
       const guardianEmail = personEmail(values.guardian, "Guardian email");
       if (guardianEmail.error) return responseError(res, guardianEmail.error);
       const guardianPhoneError = validatePhone(values.guardian.phone, "Guardian phone");
@@ -710,7 +896,8 @@ router.post("/gift", async (req, res, next) => {
         purchaser: { ...values.purchaser, email: purchaserEmail.email, address: normalizeAddress(values.purchaser.address) },
         recipient: { ...values.recipient, email: recipientEmail.email, address: normalizeAddress(values.recipient.address) },
         ...(guardian ? { guardian, consent: true } : {}),
-        localGroup: group
+        localGroup: group,
+        ...agreementsFrom(values)
       },
       activationTokenHash: tokenHash(token),
       activationExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -722,16 +909,15 @@ router.post("/gift", async (req, res, next) => {
       state.applications.push(application);
       return true;
     });
-    if (!saved) return responseError(res, "The recipient email or phone number is already associated with a member or pending gift", 409);
+    if (!saved) return responseError(res, "Gavemottakerens e-postadresse eller telefonnummer er allerede knyttet til et medlemskap eller en ventende gaveregistrering", 409);
     const frontendBase = (process.env.PUBLIC_FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
     res.status(201).json({
-      message: "Gift membership recorded; activate it using the recipient link",
+      message: "Gavemedlemskapet er registrert. Aktiver det med lenken som er sendt til mottakeren",
       id: application.id,
       activationUrl: `${frontendBase}/medlemskap?aktiver=${encodeURIComponent(token)}`
     });
   } catch (error) {
-    if (error.message.startsWith("Form data")) return responseError(res, error.message);
-    next(error);
+    handleSubmissionError(error, res, next);
   }
 });
 
@@ -739,13 +925,13 @@ router.get("/gift/activate/:token", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const token = req.params.token;
   if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) {
-    return responseError(res, "Activation link is invalid or expired", 404);
+    return responseError(res, "Aktiveringslenken er ugyldig eller utløpt", 404);
   }
   const application = readStore().applications.find((item) =>
     item.type === "gift" && item.status === "pending_activation" && item.activationTokenHash === tokenHash(token)
   );
   if (!application || Date.parse(application.activationExpiresAt) < Date.now()) {
-    return responseError(res, "Activation link is invalid or expired", 404);
+    return responseError(res, "Aktiveringslenken er ugyldig eller utløpt", 404);
   }
   const selected = application.profile.localGroup || {};
   const groupSelected = Boolean(selected.region && selected.chapter);
@@ -758,12 +944,12 @@ router.get("/gift/activate/:token", (req, res) => {
 router.post("/gift/activate/:token", async (req, res, next) => {
   try {
     const token = req.params.token;
-    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) return responseError(res, "Activation link is invalid or expired", 400);
+    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token || "")) return responseError(res, "Aktiveringslenken er ugyldig eller utløpt", 400);
     const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
     const key = checkActivationRateLimit(req, identifier);
-    if (!key) return responseError(res, "Too many attempts. Try again later.", 429);
-    if (!identifier || !(validEmail(normalizeEmail(identifier)) || normalizedPhone(identifier))) {
-      return responseError(res, "Enter a valid email address or phone number");
+    if (!key) return responseError(res, "For mange forsøk. Prøv igjen senere.", 429);
+    if (!validActivationIdentifier(identifier)) {
+      return responseError(res, "Oppgi en gyldig e-postadresse eller et gyldig telefonnummer");
     }
     const application = readStore().applications.find((item) =>
       item.type === "gift" && item.status === "pending_activation" && item.activationTokenHash === tokenHash(token)
@@ -771,19 +957,19 @@ router.post("/gift/activate/:token", async (req, res, next) => {
     if (!application || Date.parse(application.activationExpiresAt) < Date.now() ||
         !contactMatches(identifier, application.profile?.recipient?.email, application.profile?.recipient?.phone)) {
       recordMemberLoginFailure(key);
-      return responseError(res, "Activation link is invalid or expired", 400);
+      return responseError(res, "Aktiveringslenken er ugyldig eller utløpt", 400);
     }
     const password = req.body?.password;
     if (typeof password !== "string" ||
         password.length < minimumPasswordLength || password.length > 200) {
-      return responseError(res, `Password must be between ${minimumPasswordLength} and 200 characters`);
+      return responseError(res, `Passordet må være mellom ${minimumPasswordLength} og 200 tegn`);
     }
     const values = sanitizeValue(req.body);
     const savedGroup = application.profile.localGroup || {};
     const savedGroupSelected = Boolean(savedGroup.region && savedGroup.chapter);
     const hasConfiguredGroups = (readStore().config.regions || []).length > 0;
     if (!savedGroupSelected && hasConfiguredGroups && (!values.region || !values.chapter)) {
-      return responseError(res, "A configured region and chapter are required to activate this gift");
+      return responseError(res, "Velg en tilgjengelig region og et lokallag for å aktivere gavemedlemskapet");
     }
     const group = savedGroupSelected
       ? savedGroup
@@ -793,10 +979,10 @@ router.post("/gift/activate/:token", async (req, res, next) => {
     const email = application.profile.recipient.email;
     const phone = application.profile.recipient.phone;
     const recipientAge = ageOnDate(application.profile.recipient.birthDate);
-    if (recipientAge === null) return responseError(res, "Gift recipient has an invalid birthdate", 400);
+    if (recipientAge === null) return responseError(res, "Gavemottakerens fødselsdato er ugyldig", 400);
     const isMinor = recipientAge < 18;
     if (isMinor && (!application.profile.guardian || application.profile.consent !== true)) {
-      return responseError(res, "Gift is missing required guardian consent", 400);
+      return responseError(res, "Nødvendig samtykke fra foresatt mangler for gavemedlemskapet", 400);
     }
     const phoneError = validatePhone(phone, "Recipient phone");
     if (phoneError) return responseError(res, phoneError);
@@ -812,7 +998,8 @@ router.post("/gift/activate/:token", async (req, res, next) => {
         } : {
           recipient: application.profile.recipient
         }),
-        localGroup: group
+        localGroup: group,
+        ...agreementsFrom(application.profile)
       },
       passwordHash: await hashPassword(password),
       createdAt: new Date().toISOString()
@@ -832,13 +1019,12 @@ router.post("/gift/activate/:token", async (req, res, next) => {
     });
     if (!activated) {
       recordMemberLoginFailure(key);
-      return responseError(res, "Gift activation link has already been used", 409);
+      return responseError(res, "Aktiveringslenken for gavemedlemskapet er allerede brukt", 409);
     }
     failedMemberLogins.delete(key);
-    res.status(201).json({ message: "Gift membership activated", id: member.id });
+    res.status(201).json({ message: "Gavemedlemskapet er aktivert", id: member.id });
   } catch (error) {
-    if (error.message.startsWith("Form data")) return responseError(res, error.message);
-    next(error);
+    handleSubmissionError(error, res, next);
   }
 });
 
@@ -861,33 +1047,31 @@ function cleanFileName(name) {
 
 router.post("/craft", (req, res, next) => {
   const complete = async () => {
-    if (!readStore().config.membershipTypes.craft) return responseError(res, "Craft membership is unavailable", 403);
+    if (!readStore().config.membershipTypes.craft) return responseError(res, "Håndverksmedlemskap er ikke tilgjengelig", 403);
     let rawApplication = req.body?.application;
     let files = req.files || [];
     if (typeof rawApplication === "string") {
       try {
         rawApplication = JSON.parse(rawApplication);
       } catch {
-        return responseError(res, "Multipart application must contain valid JSON");
+        return responseError(res, "Søknaden må inneholde gyldig JSON");
       }
     } else if (req.is("multipart/form-data")) {
-      return responseError(res, "Multipart form must include an application JSON field");
+      return responseError(res, "Skjemaet må inneholde et application-felt med JSON");
     } else if (!rawApplication) {
       rawApplication = req.body;
     }
-    if (!isRecord(rawApplication)) return responseError(res, "Application must be a JSON object");
-    const values = sanitizeValue(rawApplication);
-    values.__fileCount = files.length;
-    const missing = checkRequired(values, "craft");
-    if (missing.length) return responseError(res, "Required fields are missing", 400, missing);
+    const values = registrationValues(res, rawApplication, "craft", "Søknaden må være et JSON-objekt", files.length);
+    if (!values) return;
     const applicantAge = ageOnDate(values.applicant?.birthDate);
-    if (applicantAge === null || applicantAge < 18) return responseError(res, "Craft applicants must be at least 18; enter a valid applicant.birthDate");
+    if (applicantAge === null || applicantAge < 18) return responseError(res, "Søkere om håndverksmedlemskap må være minst 18 år. Oppgi en gyldig applicant.birthDate");
     if (values.business?.qualificationConfirmed !== true) {
-      return responseError(res, "Business qualification confirmation is required");
+      return responseError(res, "Bekreftelse på yrkeskvalifikasjon er påkrevd");
     }
-    if (values.criteriaAccepted !== true) return responseError(res, "Craft membership criteria must be accepted");
+    if (values.criteriaAccepted !== true) return responseError(res, "Kriteriene for håndverksmedlemskap må godtas");
+    if (values.termsAccepted !== true) return responseError(res, termsRequiredMessage);
     if (!["certificate", "jury"].includes(values.admissionMethod)) {
-      return responseError(res, "admissionMethod must be certificate or jury");
+      return responseError(res, "admissionMethod må være certificate eller jury");
     }
     const businessEmail = personEmail(values.business, "Business email");
     if (businessEmail.error) return responseError(res, businessEmail.error);
@@ -902,7 +1086,7 @@ router.post("/craft", (req, res, next) => {
     const validatedFiles = [];
     for (const file of files) {
       const valid = validateFile(file);
-      if (!valid) return responseError(res, "Only valid PDF, PNG, and JPEG files are accepted");
+      if (!valid) return responseError(res, "Bare gyldige PDF-, PNG- og JPEG-filer godtas");
       validatedFiles.push({
         id: randomUUID(),
         originalName: cleanFileName(file.originalname),
@@ -937,35 +1121,32 @@ router.post("/craft", (req, res, next) => {
         ...values,
         business: { ...values.business, email: businessEmail.email, address: normalizeAddress(values.business.address) },
         applicant: { ...values.applicant, email: applicantEmail.email, address: normalizeAddress(values.applicant.address) },
-        localGroup: groupFrom(values)
+        localGroup: groupFrom(values),
+        ...agreementsFrom(values)
       },
       files: savedFiles,
       createdAt: new Date().toISOString()
     };
     await updateStore((state) => { state.applications.push(application); });
-    res.status(201).json({ message: "Craft application received", id });
+    res.status(201).json({ message: "Søknad om håndverksmedlemskap er mottatt", id });
   };
 
   if (!req.is("multipart/form-data")) {
     complete().catch((error) => {
-      if (error.message.startsWith("Form data")) return responseError(res, error.message);
-      next(error);
+      handleSubmissionError(error, res, next);
     });
     return;
   }
   upload(req, res, (error) => {
     if (error) {
       const messages = {
-        LIMIT_FILE_SIZE: "Each file must be 5 MB or smaller",
-        LIMIT_FILE_COUNT: "A maximum of 5 files is allowed",
-        LIMIT_UNEXPECTED_FILE: "Use the repeated files field for up to 5 attachments"
+        LIMIT_FILE_SIZE: "Hver fil kan være på maksimalt 5 MB",
+        LIMIT_FILE_COUNT: "Du kan legge ved maksimalt 5 filer",
+        LIMIT_UNEXPECTED_FILE: "Bruk files-feltet flere ganger for å legge ved opptil 5 filer"
       };
-      return responseError(res, messages[error.code] || "Multipart upload is invalid or exceeds the file limits");
+      return responseError(res, messages[error.code] || "Filopplastingen er ugyldig eller overskrider filgrensene");
     }
-    complete().catch((completeError) => {
-      if (completeError.message.startsWith("Form data")) return responseError(res, completeError.message);
-      next(completeError);
-    });
+    complete().catch((completeError) => handleSubmissionError(completeError, res, next));
   });
 });
 
@@ -974,34 +1155,37 @@ router.post("/custom/:formId", (req, res, next) => {
     const form = (readStore().config.customForms || []).find((item) =>
       item.id === req.params.formId && item.active
     );
-    if (!form) return responseError(res, "This form is unavailable", 404);
+    if (!form) return responseError(res, "Dette skjemaet er ikke tilgjengelig", 404);
     let rawValues = req.body?.application;
     if (typeof rawValues === "string") {
       try {
         rawValues = JSON.parse(rawValues);
       } catch {
-        return responseError(res, "Form submission must contain valid JSON");
+        return responseError(res, "Skjemainnsendingen må inneholde gyldig JSON");
       }
     } else if (req.is("multipart/form-data")) {
-      return responseError(res, "Multipart form must include an application JSON field");
+      return responseError(res, "Skjemaet må inneholde et application-felt med JSON");
     } else {
       rawValues = req.body;
     }
-    if (!isRecord(rawValues)) return responseError(res, "Form submission must be a JSON object");
+    if (!isRecord(rawValues)) return responseError(res, "Skjemainnsendingen må være et JSON-objekt");
     const values = sanitizeValue(rawValues);
+    const includeAgreements = form.includeAgreements !== false;
     const allowedFields = new Set(form.fields
       .filter((field) => !["section", "file"].includes(field.type))
       .map((field) => field.id));
+    if (includeAgreements) agreementFieldIds.forEach((fieldId) => allowedFields.add(fieldId));
     const unexpectedFields = Object.keys(values).filter((field) => !allowedFields.has(field));
     if (unexpectedFields.length) {
-      return responseError(res, "Form submission contains fields that are not configured", 400, unexpectedFields);
+      return responseError(res, "Skjemainnsendingen inneholder felt som ikke er konfigurert", 400, unexpectedFields);
     }
+    if (includeAgreements && values.termsAccepted !== true) return responseError(res, termsRequiredMessage);
     const files = req.files || [];
     const fileFields = form.fields.filter((field) => field.type === "file");
     const fileCounts = new Map(fileFields.map((field) => [field.id, 0]));
     for (const file of files) {
       const fieldId = file.fieldname.startsWith("file_") ? file.fieldname.slice(5) : "";
-      if (!fileCounts.has(fieldId)) return responseError(res, "Uploaded file does not match a form field");
+      if (!fileCounts.has(fieldId)) return responseError(res, "Den opplastede filen samsvarer ikke med et skjemafelt");
       fileCounts.set(fieldId, fileCounts.get(fieldId) + 1);
     }
     for (const field of form.fields) {
@@ -1009,40 +1193,40 @@ router.post("/custom/:formId", (req, res, next) => {
       const value = values[field.id];
       if (field.type === "file") {
         if (field.required && !fileCounts.get(field.id)) {
-          return responseError(res, "Required fields are missing", 400, [field.id]);
+          return responseError(res, "Obligatoriske felt mangler", 400, [field.id]);
         }
         continue;
       }
       if (value !== undefined &&
           ["text", "textarea", "email", "phone", "date", "select"].includes(field.type) &&
           typeof value !== "string") {
-        return responseError(res, `${field.label} must be text`);
+        return responseError(res, `${field.label} må være tekst`);
       }
       if (field.required && (typeof value !== "string" && typeof value !== "boolean" ||
           value === "" || value === false)) {
-        return responseError(res, "Required fields are missing", 400, [field.id]);
+        return responseError(res, "Obligatoriske felt mangler", 400, [field.id]);
       }
       if (field.type === "checkbox" && value !== undefined && typeof value !== "boolean") {
-        return responseError(res, `${field.label} must be a checkbox value`);
+        return responseError(res, `${field.label} må være en avkrysningsverdi`);
       }
       if (field.type === "email" && value && !validEmail(normalizeEmail(value))) {
-        return responseError(res, `${field.label} must be a valid email address`);
+        return responseError(res, `${field.label} må være en gyldig e-postadresse`);
       }
       if (field.type === "phone" && value && !normalizedPhone(value)) {
-        return responseError(res, `${field.label} must be a valid phone number`);
+        return responseError(res, `${field.label} må være et gyldig telefonnummer`);
       }
       if (field.type === "select" && value && !field.options.includes(value)) {
-        return responseError(res, `${field.label} must be one of the configured options`);
+        return responseError(res, `${field.label} må være et av de konfigurerte alternativene`);
       }
       if (field.type === "date" && value && !validDateString(value)) {
-        return responseError(res, `${field.label} must be a valid date`);
+        return responseError(res, `${field.label} må være en gyldig dato`);
       }
     }
-    if (files.length && !fileFields.length) return responseError(res, "Files are not accepted by this form");
+    if (files.length && !fileFields.length) return responseError(res, "Dette skjemaet godtar ikke filer");
     const validatedFiles = [];
     for (const file of files) {
       const valid = validateFile(file);
-      if (!valid) return responseError(res, "Only valid PDF, PNG, and JPEG files are accepted");
+      if (!valid) return responseError(res, "Bare gyldige PDF-, PNG- og JPEG-filer godtas");
       validatedFiles.push({
         id: randomUUID(),
         fieldId: file.fieldname.slice(5),
@@ -1080,28 +1264,24 @@ router.post("/custom/:formId", (req, res, next) => {
       createdAt: new Date().toISOString()
     };
     await updateStore((state) => { state.applications.push(application); });
-    res.status(201).json({ message: "Form submission received", id });
+    res.status(201).json({ message: "Skjemainnsendingen er mottatt", id });
   };
   if (!req.is("multipart/form-data")) {
     complete().catch((error) => {
-      if (error.message.startsWith("Form data")) return responseError(res, error.message);
-      next(error);
+      handleSubmissionError(error, res, next);
     });
     return;
   }
   customFormUpload(req, res, (error) => {
     if (error) {
       const message = error.code === "LIMIT_FILE_SIZE"
-        ? "Each file must be 5 MB or smaller"
+        ? "Hver fil kan være på maksimalt 5 MB"
         : error.code === "LIMIT_FILE_COUNT"
-          ? "A maximum of 10 files is allowed"
-          : "Multipart upload is invalid or exceeds the file limits";
+          ? "Du kan legge ved maksimalt 10 filer"
+          : "Filopplastingen er ugyldig eller overskrider filgrensene";
       return responseError(res, message);
     }
-    complete().catch((completeError) => {
-      if (completeError.message.startsWith("Form data")) return responseError(res, completeError.message);
-      next(completeError);
-    });
+    complete().catch((completeError) => handleSubmissionError(completeError, res, next));
   });
 });
 

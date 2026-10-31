@@ -7,12 +7,12 @@ router.post("/", (req, res) => {
 
   if (!name || !email || !message) {
     return res.status(400).json({
-      message: "Name, email and message are required"
+      message: "Navn, e-postadresse og melding er påkrevd"
     });
   }
 
   res.status(201).json({
-    message: "Contact request received",
+    message: "Henvendelsen er mottatt",
     submitted: {
       name,
       email,

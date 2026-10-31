@@ -14,9 +14,9 @@ npm run check
 npm start
 ```
 
-`ADMIN_EMAIL` and `ADMIN_PASSWORD` are required for admin login and are not given defaults. `PORT` defaults to `3000`; `DATA_DIR` defaults to `./data` relative to the backend working directory; `PUBLIC_FRONTEND_URL` defaults to `http://localhost:5173` and controls gift activation URLs. Use a persistent writable `DATA_DIR` for durable local storage. Do not expose it through a static file server. Uploaded files are private and are only retrievable by an authenticated admin.
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` seed the main administrator (`owner`) on first login; after that the password is stored hashed in the application store and is changed in the app or through the forgot-password flow. They have no defaults. `PORT` defaults to `3000`; `DATA_DIR` defaults to `./data` relative to the backend working directory; `PUBLIC_FRONTEND_URL` defaults to `http://localhost:5173` and controls activation and profile-change URLs. To enable profile-change and password-reset emails, set `SMTP_HOST`, `SMTP_FROM`, and optionally `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASS`, and `SMTP_SECURE=true` when required by the provider. Port `465` uses TLS by default. Without SMTP configuration, the request endpoint reports that email delivery is unavailable. Use a persistent writable `DATA_DIR` for durable local storage. Do not expose it through a static file server. Uploaded files are private and are only retrievable by an authenticated admin.
 
-The JSON store and private uploads are created under `DATA_DIR` and ignored by git. **Stored member and application personal information is unencrypted. Use test data only; this local-development MVP is not suitable for real member data or production.** Member passwords are hashed with Node's scrypt; session tokens are random, stored as hashes, and sent in HttpOnly, SameSite=Lax cookies. Set `NODE_ENV=production` to enable Secure cookies (HTTPS is then required). CORS is restricted to the configured origins; requests without an `Origin` header are supported for local command-line clients. The admin bootstrap credentials are environment-only. This MVP deliberately does not process payments or send email.
+The JSON store and private uploads are created under `DATA_DIR` and ignored by git. **Stored member and application personal information is unencrypted. Use test data only; this local-development MVP is not suitable for real member data or production.** Member passwords are hashed with Node's scrypt; session tokens are random, stored as hashes, and sent in HttpOnly, SameSite=Lax cookies. Set `NODE_ENV=production` to enable Secure cookies (HTTPS is then required). CORS is restricted to the configured origins; requests without an `Origin` header are supported for local command-line clients. The admin bootstrap credentials are environment-only. This MVP does not process payments; profile-change email is optional and requires SMTP configuration.
 
 ## API contract
 
@@ -25,7 +25,14 @@ All JSON responses use `{ "message": "..." }` for action results/errors; registr
 ### Activities
 
 - `GET /api/activities` returns the current activity list. `GET /api/activities/:id` returns one activity.
-- `DELETE /api/activities/:id` permanently removes an activity and requires an authenticated admin session. Removed activities are persisted in the application store.
+- `POST /api/activities` creates and publishes an activity and requires an authenticated admin session. Send `multipart/form-data` with an `activity` JSON field containing title, date, location, optional time/category/HTML description, ticket capacity, and ticket types (`name`, `description`, `price`, `quantity`, and eligible `memberTypes`). An optional `image` field accepts one signature-checked PNG, JPEG, or WebP up to 5 MiB. Description HTML is sanitized to a small formatting allowlist before storage.
+- `PUT /api/activities/:id` updates an existing activity in place and requires an authenticated admin session. It accepts the same multipart fields as create; omitting `image` keeps the current image, and activities without ticket types can remain without ticket types.
+- `GET /api/activities/:id/orders` lists all orders and participants for an activity (admin only). Public activities include `remainingTickets` (`total` and `byType`). Activity edits cannot lower capacity or ticket quantity below sold tickets, and deleting an activity cancels its orders.
+- Memberships are valid for one year (`validUntil`, computed from `createdAt` when missing). `POST /api/membership/me/renew` extends it by one year (dummy payment) and `PATCH /api/membership/me/consents` (`{ emailOffers, smsOffers }`) updates marketing consents. Expired members can log in and renew but cannot buy tickets.
+- Admin: `GET /api/admin/members` (filters `search`, `type`, `status`, `region`, `expired`), `GET /api/admin/members/export` (CSV with the same filters) and `PATCH /api/admin/members/:id` (`status` active/suspended, `validUntil`, `localGroup`; suspending ends the member's sessions).
+- `GET/POST /api/membership/orders` (member session) lists own orders or buys tickets with `{ "activityId", "ticketName", "quantity" }` (1–10). The server computes the price for the member's type including an active discount, checks per-type and total capacity atomically, and confirms immediately (dummy payment). `DELETE /api/membership/orders/:id` cancels an own upcoming order.
+- Activities have a `status` (`published`, `draft`, `archived`); only published ones are public. Admins can send `status` in create/update and list everything with `GET /api/activities?scope=all`. `DELETE /api/activities/:id` (admin) archives the activity and cancels its orders; set `status` back to `published` to restore it.
+- `GET /api/admin/audit-log` (admin) returns the latest 200 audit entries (activity create/update/archive, application review, member and admin changes, config updates).
 
 ### Public membership and member session
 
@@ -89,7 +96,8 @@ All JSON responses use `{ "message": "..." }` for action results/errors; registr
 
 ### Admin authentication and configuration
 
-- `POST /api/auth/login` accepts `{ "email", "password" }` matching `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Admin login is separate from member login. `GET /api/auth/me` reports the admin session; `POST /api/auth/logout` revokes it.
+- `POST /api/auth/login` accepts `{ "email", "password" }` for any stored administrator (the owner is seeded from `ADMIN_EMAIL`/`ADMIN_PASSWORD` on first login). `GET /api/auth/me` reports the admin session; `POST /api/auth/logout` revokes it. `POST /api/auth/me/password` (`{ currentPassword, newPassword }`) changes the admin's own password. The owner can use `GET/POST /api/auth/admins` (`{ email, password }`) and `DELETE /api/auth/admins/:id` to manage other administrators; they respond 403 for other roles.
+- `POST /api/membership/password/forgot` (`{ email }`) always answers neutrally and e-mails a 30-minute link to `/min-side/nytt-passord?token=…` for members and administrators. `POST /api/membership/password/reset` (`{ token, password }`) sets the new password and ends all sessions for the account. `POST /api/membership/me/password` changes a member's own password and `DELETE /api/membership/me` (`{ password }`) deletes the membership and cancels upcoming orders. Registration, password and order endpoints are rate limited per IP.
 - Admin routes require the admin cookie. Browser clients must send credentials.
 - `GET /api/admin/config` returns the editable settings object. `PUT /api/admin/config` accepts partial updates for `membershipTypes`, `regions`, `fields`, `options`, and `craftShippingInstructions`; omitted properties are preserved. Field keys use the frontend's exact dotted IDs, e.g. `person.firstName`, `child.birthDate`, `parent.email`, `purchaser.address.street`, `business.qualificationConfirmed`, `applicant.phone`, `jury.education`, `localGroup.region`, and `files`. It accepts this shape:
   ```json
@@ -106,3 +114,13 @@ All JSON responses use `{ "message": "..." }` for action results/errors; registr
 - `GET /api/admin/applications/:id/files/:fileId` streams an attachment after admin authentication; stored upload paths are never public.
 
 Existing content and contact routes are preserved: `/api/health`, `/api/activities`, `/api/courses`, `/api/news`, `/api/municipalities`, and `/api/contact`.
+
+### Member self-service
+
+- `POST /api/membership/profile/change-request` requires a member session and emails a single-use profile-edit link to the member's current registered email. Links expire after 30 minutes. Requests are limited to one per minute per member. SMTP must be configured.
+- `GET /api/membership/profile/change/:token` returns the profile associated with a valid link. `PUT` to the same route accepts `{ "profile": { ... } }`, validates required identity/contact fields and age restrictions, checks email/phone uniqueness, and preserves the existing `localGroup`. The link is invalidated after a successful update.
+- `PATCH /api/membership/me/local-group` requires a member session and accepts `{ "region", "chapter" }`. The backend validates the selected chapter against the chosen region.
+
+## Tests and storage
+
+`npm test` runs `node --test` integration tests that start the server against a temporary `DATA_DIR`. Storage is still a single JSON file with serialized, atomic writes; it is fine for one backend process. Moving to a real database (for several processes or large volumes) is a separate migration and has not been done.

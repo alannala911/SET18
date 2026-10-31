@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { activities as defaultActivities } from "../data/content.js";
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || "./data");
@@ -135,7 +136,7 @@ function defaultOptions() {
   };
 }
 
-const initialState = () => ({
+const createInitialState = () => ({
   members: [],
   applications: [],
   sessions: [],
@@ -157,71 +158,98 @@ const initialState = () => ({
   }
 });
 
+async function readInitialStore() {
+  try {
+    return JSON.parse(await readFile(storePath, "utf8"));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return createInitialState();
+  }
+}
+
+function migrateConfig(state, defaults) {
+  const storedSchemaVersion = state.config?.schemaVersion || 0;
+  const migratingConfig = storedSchemaVersion < 2;
+  state.config = { ...defaults, ...(state.config || {}) };
+
+  const hasExistingPersonFields = Object.keys(state.config.fields || {}).some((flow) =>
+    state.config.fields[flow]?.["person.firstName"]
+  );
+  if (migratingConfig && (!state.config.fields || !hasExistingPersonFields)) {
+    state.config.fields = defaults.fields;
+    state.config.requiredFields = defaults.requiredFields;
+  }
+
+  state.config.fields = Object.fromEntries(Object.keys(defaults.fields).map((flow) => [
+    flow,
+    { ...defaults.fields[flow], ...(state.config.fields?.[flow] || {}) }
+  ]));
+  state.config.fields.minor["child.email"] = {
+    ...state.config.fields.minor["child.email"],
+    required: true
+  };
+  state.config.fields.minor["child.phone"] = {
+    ...state.config.fields.minor["child.phone"],
+    required: true
+  };
+  delete state.config.fields.minor.password;
+  delete state.config.fields.minor.confirmPassword;
+
+  const requiredFields = state.config.requiredFields || defaults.requiredFields;
+  state.config.requiredFields = Object.fromEntries(Object.entries(requiredFields).map(([flow, fields]) => [
+    flow,
+    flow === "minor"
+      ? [...new Set([
+        ...fields.filter((field) => !["password", "confirmPassword"].includes(field)),
+        "child.email",
+        "child.phone"
+      ])]
+      : fields
+  ]));
+
+  if (migratingConfig && (!Array.isArray(state.config.regions) || state.config.regions.length === 0)) {
+    state.config.regions = defaults.regions;
+  }
+  state.config.options = Object.fromEntries(Object.keys(defaults.options).map((flow) => [
+    flow,
+    { ...defaults.options[flow], ...(state.config.options?.[flow] || {}) }
+  ]));
+  state.config.additionalFields ??= defaults.additionalFields;
+  state.config.sections ??= defaults.sections;
+  state.config.customForms ??= defaults.customForms;
+  state.config.craftShippingInstructions ??= "";
+  state.config.addressLookupAvailable = false;
+  state.config.schemaVersion = 4;
+}
+
+function migrateStore(state) {
+  if (!state || typeof state !== "object" || !Array.isArray(state.members) ||
+      !Array.isArray(state.applications) || !Array.isArray(state.sessions)) {
+    throw new Error("Søknadsdatabasen har et ugyldig format");
+  }
+  if (state.activities === undefined) state.activities = structuredClone(defaultActivities);
+  if (!Array.isArray(state.activities)) {
+    throw new Error("Aktivitetene i søknadsdatabasen har et ugyldig format");
+  }
+
+  const defaults = createInitialState().config;
+  migrateConfig(state, defaults);
+
+  state.orders ??= [];
+  state.auditLog ??= [];
+  state.admins ??= [];
+  if (state.adminAccount) {
+    const ownerEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    if (ownerEmail && Object.keys(state.adminAccount).length) {
+      state.admins.push({ id: randomUUID(), email: ownerEmail, role: "owner", ...state.adminAccount });
+    }
+    delete state.adminAccount;
+  }
+  return state;
+}
+
 await mkdir(uploadDirectory, { recursive: true, mode: 0o700 });
-
-let state;
-try {
-  state = JSON.parse(await readFile(storePath, "utf8"));
-} catch (error) {
-  if (error.code !== "ENOENT") throw error;
-  state = initialState();
-}
-
-if (!state || typeof state !== "object" || !Array.isArray(state.members) ||
-    !Array.isArray(state.applications) || !Array.isArray(state.sessions)) {
-  throw new Error("Application store has an invalid format");
-}
-if (state.activities === undefined) state.activities = structuredClone(defaultActivities);
-if (!Array.isArray(state.activities)) throw new Error("Application store activities have an invalid format");
-const defaults = initialState().config;
-const storedSchemaVersion = state.config?.schemaVersion || 0;
-const migratingConfig = storedSchemaVersion < 2;
-state.config = { ...defaults, ...(state.config || {}) };
-if (migratingConfig && (!state.config.fields ||
-    !Object.keys(state.config.fields).some((flow) => state.config.fields[flow]?.["person.firstName"]))) {
-  state.config.fields = defaults.fields;
-  state.config.requiredFields = defaults.requiredFields;
-}
-state.config.fields = Object.fromEntries(Object.keys(defaults.fields).map((flow) => [
-  flow,
-  { ...defaults.fields[flow], ...(state.config.fields?.[flow] || {}) }
-]));
-state.config.fields.minor["child.email"] = {
-  ...state.config.fields.minor["child.email"],
-  required: true
-};
-state.config.fields.minor["child.phone"] = {
-  ...state.config.fields.minor["child.phone"],
-  required: true
-};
-delete state.config.fields.minor.password;
-delete state.config.fields.minor.confirmPassword;
-state.config.requiredFields = Object.fromEntries(Object.entries(
-  state.config.requiredFields || defaults.requiredFields
-).map(([flow, fields]) => [
-  flow,
-  flow === "minor"
-    ? [...new Set([
-      ...fields.filter((field) => !["password", "confirmPassword"].includes(field)),
-      "child.email",
-      "child.phone"
-    ])]
-    : fields
-]));
-if (migratingConfig && (!Array.isArray(state.config.regions) || state.config.regions.length === 0)) {
-  state.config.regions = defaults.regions;
-}
-state.config.options = Object.fromEntries(Object.keys(defaults.options).map((flow) => [
-  flow,
-  { ...defaults.options[flow], ...(state.config.options?.[flow] || {}) }
-]));
-state.config.additionalFields ??= defaults.additionalFields;
-state.config.sections ??= defaults.sections;
-state.config.customForms ??= defaults.customForms;
-state.config.requiredFields ??= defaults.requiredFields;
-state.config.craftShippingInstructions ??= "";
-state.config.addressLookupAvailable = false;
-state.config.schemaVersion = 4;
+let state = migrateStore(await readInitialStore());
 
 let pendingWrite = Promise.resolve();
 

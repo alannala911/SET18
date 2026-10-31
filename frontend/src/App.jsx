@@ -9,6 +9,7 @@ import {
 
 import Courses from "./Pages/Courses.jsx";
 import Activities from "./Pages/Activities.jsx";
+import { ActivityEditor } from "./Pages/ActivityEditor.jsx";
 import News from "./Pages/News.jsx";
 import About from "./Pages/About.jsx";
 import Municipalities from "./Pages/Municipalities.jsx";
@@ -16,7 +17,9 @@ import Contact from "./Pages/Contact.jsx";
 import Search from "./Pages/Search.jsx";
 import Shop from "./Pages/Shop.jsx";
 import MyPage from "./Pages/MyPage.jsx";
-import Membership from "./Pages/Membership.jsx";
+import MemberProfileChange from "./Pages/MemberProfileChange.jsx";
+import ResetPassword from "./Pages/ResetPassword.jsx";
+import Membership, { MembershipAdminPage } from "./Pages/Membership.jsx";
 
 import "./App.css";
 
@@ -261,6 +264,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/kurs" element={<Courses />} />
           <Route path="/aktiviteter" element={<Activities />} />
+          <Route path="/aktiviteter/ny" element={<ActivityEditor />} />
+          <Route path="/aktiviteter/:activityId/rediger" element={<ActivityEditor />} />
           <Route path="/nyheter" element={<News />} />
           <Route path="/om-oss" element={<About />} />
           <Route
@@ -271,7 +276,10 @@ function App() {
           <Route path="/sok" element={<Search />} />
           <Route path="/nettbutikk" element={<Shop />} />
           <Route path="/medlemskap" element={<Membership />} />
+          <Route path="/medlemskap/rediger" element={<MembershipAdminPage />} />
           <Route path="/admin" element={<Navigate to="/min-side" replace />} />
+          <Route path="/min-side/endre-personopplysninger" element={<MemberProfileChange />} />
+          <Route path="/min-side/nytt-passord" element={<ResetPassword />} />
           <Route path="/min-side" element={<MyPage />} />
         </Routes>
       </section>

@@ -16,7 +16,8 @@
 
 .my-page-auth-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 560px);
+  justify-content: center;
   align-items: start;
   gap: 20px;
 }
@@ -40,8 +41,22 @@
   font-weight: 700;
 }
 
-.my-page-admin-panel:has(.membership-admin-heading) {
-  grid-column: 1 / -1;
+.my-page-account-actions {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.my-page-actions {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+  width: 100%;
+}
+
+.my-page-actions .membership-form {
+  width: 100%;
 }
 
 .my-page-admin-panel > .membership-form {
@@ -266,6 +281,11 @@
   background: #ffffff;
 }
 
+.membership-secondary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .membership-text-button {
   margin-top: 12px;
   padding: 0;
@@ -305,6 +325,69 @@
   align-items: center;
   justify-content: space-between;
   gap: 15px;
+}
+
+.membership-admin-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 24px;
+  padding: 20px 22px;
+  border: 1px solid #dddddd;
+  border-left: 5px solid #8f2740;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.membership-admin-card h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.membership-admin-card p,
+.membership-admin-intro {
+  margin: 0;
+  color: #565656;
+  line-height: 1.5;
+}
+
+.membership-admin-card .membership-submit,
+.membership-admin-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.membership-admin-back {
+  width: fit-content;
+  color: #8f2740;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.membership-admin-back:hover {
+  text-decoration: underline;
+}
+
+.membership-admin-page > h1 {
+  margin-bottom: 8px;
+}
+
+.membership-admin-intro {
+  margin-bottom: 24px;
+}
+
+.membership-admin-locked {
+  display: grid;
+  gap: 14px;
+}
+
+.membership-admin-locked h2,
+.membership-admin-locked p {
+  margin: 0;
 }
 
 .membership-applications {

@@ -1,189 +1,25 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { request, useAdminSession } from "./MembershipApi.js";
+import { configurableFields, emptyAddress, membershipTypes } from "./MembershipConfig.js";
+import {
+  AddressFields,
+  CheckField,
+  DynamicFormFields,
+  Field,
+  LocalGroupFields,
+  Message,
+  PasswordFields,
+  PersonFields,
+  Section,
+  SelectField,
+  TextAreaField,
+} from "./MembershipFormFields.jsx";
+import { FormConfigContext } from "./MembershipFormContext.js";
 import "./Membership.css";
 
-const API = import.meta.env.VITE_API_BASE_URL || "/api";
-const FormConfigContext = createContext(null);
-const membershipTypes = [
-  ["regular", "Vanlig medlemskap"],
-  ["minor", "Mindreårig medlemskap"],
-  ["gift", "Gi medlemskap i gave"],
-  ["craft", "Husflidshåndverker"],
-];
-const builderFieldTypes = [
-  ["text", "Kort tekst"],
-  ["textarea", "Lang tekst"],
-  ["email", "E-post"],
-  ["phone", "Telefon"],
-  ["date", "Dato"],
-  ["select", "Nedtrekksliste"],
-  ["checkbox", "Avkrysningsboks"],
-  ["file", "Filopplasting"],
-  ["section", "Innholdsboks"],
-];
-const presetFieldTypes = builderFieldTypes.filter(([type]) => type !== "file");
-const configurableSections = {
-  regular: ["Alderskontroll", "Personlig informasjon", "Passord", "Adresse", "Velg lokallag"],
-  minor: ["Barnets informasjon", "Barnets alder", "Forelders informasjon", "Forelder 2", "Forelder 3", "Forelder 4", "Passord", "Adresse", "Velg lokallag"],
-  gift: ["Kjøperens alderskontroll", "Kjøperens personlige informasjon", "Kjøperens adresse", "Mottakerens alderskontroll", "Mottakerens personlige informasjon", "Mottakerens adresse", "Foresattens informasjon", "Velg lokallag"],
-  craft: ["Bedriftsinformasjon", "Bedriftens adresse", "Søkerens personinformasjon", "Søkerens fødselsdato og adresse", "Søkerens adresse", "Håndverkstype", "Last opp dokumentasjon", "Juryert opptak", "Velg lokallag"],
-};
+export { MembershipAdminPage } from "./MembershipAdmin.jsx";
 
-function createBuilderField(type = "text") {
-  const id = `field_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
-  return {
-    id,
-    type,
-    label: type === "section" ? "Ny innholdsboks" : "Nytt felt",
-    required: false,
-    ...(type === "select" ? { options: ["Alternativ 1"] } : {}),
-    ...(type === "section" ? { content: "" } : {}),
-  };
-}
-
-function BuilderFieldEditor({ field, onChange, onRemove, allowFiles = true }) {
-  const fieldTypes = allowFiles ? builderFieldTypes : presetFieldTypes;
-  return (
-    <div className="builder-field-editor">
-      <label className="membership-field">
-        <span>Felttype</span>
-        <select value={field.type} onChange={(event) => {
-          const next = createBuilderField(event.target.value);
-          onChange({ ...next, id: field.id, label: field.label });
-        }}>
-          {fieldTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
-      <label className="membership-field">
-        <span>{field.type === "section" ? "Overskrift" : "Feltetikett"}</span>
-        <input value={field.label} maxLength={120} onChange={(event) => onChange({ ...field, label: event.target.value })} />
-      </label>
-      {field.type === "select" && <label className="membership-field membership-grid-wide">
-        <span>Valg (ett per linje)</span>
-        <textarea rows="3" value={(field.options || []).join("\n")} onChange={(event) => onChange({ ...field, options: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean) })} />
-      </label>}
-      {field.type === "section" && <label className="membership-field membership-grid-wide">
-        <span>Innholdstekst</span>
-        <textarea rows="3" value={field.content || ""} maxLength={2000} onChange={(event) => onChange({ ...field, content: event.target.value })} />
-      </label>}
-      {field.type !== "section" && <label className="membership-check">
-        <input type="checkbox" checked={Boolean(field.required)} onChange={(event) => onChange({ ...field, required: event.target.checked })} />
-        Obligatorisk
-      </label>}
-      <button className="membership-text-button" type="button" onClick={onRemove}>Fjern felt</button>
-    </div>
-  );
-}
-
-const configurableFields = {
-  regular: [
-    ["birthDate", "Fødselsdato", true, "Påkrevd for alderskontroll"],
-    ["person.firstName", "Fornavn", true],
-    ["person.middleName", "Mellomnavn", false],
-    ["person.lastName", "Etternavn", true],
-    ["person.gender", "Kjønn", true],
-    ["person.email", "E-post", true, "Påkrevd for medlemskonto"],
-    ["person.phone", "Telefonnummer", true, "Påkrevd for medlemskonto"],
-    ["password", "Passord", true, "Påkrevd for medlemskonto"],
-    ["confirmPassword", "Bekreft passord", true],
-    ["address.street", "Gateadresse", true],
-    ["address.postalCode", "Postnummer", true],
-    ["address.city", "Poststed", true],
-    ["localGroup.region", "Region", true],
-    ["localGroup.chapter", "Lokallag", true],
-  ],
-  minor: [
-    ["child.firstName", "Barnets fornavn", true],
-    ["child.middleName", "Barnets mellomnavn", false],
-    ["child.lastName", "Barnets etternavn", true],
-    ["child.gender", "Barnets kjønn", true],
-    ["child.email", "Barnets e-post", true, "Påkrevd for barnets innlogging"],
-    ["child.phone", "Barnets telefonnummer", true, "Påkrevd for barnets innlogging"],
-    ["child.birthDate", "Barnets fødselsdato", true, "Påkrevd for alderskontroll"],
-    ["parent.firstName", "Forelders fornavn", true, "Påkrevd for foresatt"],
-    ["parent.middleName", "Forelders mellomnavn", false],
-    ["parent.lastName", "Forelders etternavn", true, "Påkrevd for foresatt"],
-    ["parent.gender", "Forelders kjønn", true, "Påkrevd for foresatt"],
-    ["parent.email", "Forelders e-post", true, "Påkrevd for foresatt"],
-    ["parent.phone", "Forelders telefonnummer", true, "Påkrevd for foresatt"],
-    ["address.street", "Gateadresse", true],
-    ["address.postalCode", "Postnummer", true],
-    ["address.city", "Poststed", true],
-    ["localGroup.region", "Region", true],
-    ["localGroup.chapter", "Lokallag", true],
-    ["consent", "Samtykke fra foresatt", true],
-  ],
-  gift: [
-    ["purchaser.birthDate", "Kjøperens fødselsdato", true, "Påkrevd for alderskontroll"],
-    ["purchaser.firstName", "Kjøperens fornavn", true],
-    ["purchaser.middleName", "Kjøperens mellomnavn", false],
-    ["purchaser.lastName", "Kjøperens etternavn", true],
-    ["purchaser.gender", "Kjøperens kjønn", true],
-    ["purchaser.email", "Kjøperens e-post", true, "Påkrevd for kontakt"],
-    ["purchaser.phone", "Kjøperens telefonnummer", true, "Påkrevd for kontakt"],
-    ["purchaser.address.street", "Kjøperens gateadresse", true],
-    ["purchaser.address.postalCode", "Kjøperens postnummer", true],
-    ["purchaser.address.city", "Kjøperens poststed", true],
-    ["recipient.birthDate", "Mottakerens fødselsdato", true, "Påkrevd for alderskontroll"],
-    ["recipient.firstName", "Mottakerens fornavn", true],
-    ["recipient.middleName", "Mottakerens mellomnavn", false],
-    ["recipient.lastName", "Mottakerens etternavn", true],
-    ["recipient.gender", "Mottakerens kjønn", true],
-    ["recipient.email", "Mottakerens e-post", true, "Påkrevd for medlemskonto"],
-    ["recipient.phone", "Mottakerens telefonnummer", true, "Påkrevd for medlemskonto"],
-    ["recipient.address.street", "Mottakerens gateadresse", true],
-    ["recipient.address.postalCode", "Mottakerens postnummer", true],
-    ["recipient.address.city", "Mottakerens poststed", true],
-    ["guardian.firstName", "Foresattens fornavn (mottaker under 18)", false, "Påkrevd for mottaker under 18"],
-    ["guardian.middleName", "Foresattens mellomnavn", false, "Påkrevd for mottaker under 18"],
-    ["guardian.lastName", "Foresattens etternavn", false, "Påkrevd for mottaker under 18"],
-    ["guardian.gender", "Foresattens kjønn", false, "Påkrevd for mottaker under 18"],
-    ["guardian.email", "Foresattens e-post", false, "Påkrevd for mottaker under 18"],
-    ["guardian.phone", "Foresattens telefonnummer", false, "Påkrevd for mottaker under 18"],
-    ["consent", "Samtykke fra foresatt (mottaker under 18)", false, "Påkrevd for mottaker under 18"],
-    ["localGroup.region", "Region for mottaker", false],
-    ["localGroup.chapter", "Lokallag for mottaker", false],
-  ],
-  craft: [
-    ["business.name", "Bedriftsnavn", true],
-    ["business.organizationNumber", "Organisasjonsnummer", true],
-    ["business.address.street", "Bedriftens gateadresse", true],
-    ["business.address.postalCode", "Bedriftens postnummer", true],
-    ["business.address.city", "Bedriftens poststed", true],
-    ["business.phone", "Bedriftens telefon", true],
-    ["business.email", "Bedriftens e-post", true, "Påkrevd for kontakt"],
-    ["business.website", "Hjemmeside", false],
-    ["business.qualificationConfirmed", "Bedriftens kvalifikasjonsbekreftelse", true, "Påkrevd"],
-    ["applicant.firstName", "Søkerens fornavn", true],
-    ["applicant.middleName", "Søkerens mellomnavn", false],
-    ["applicant.lastName", "Søkerens etternavn", true],
-    ["applicant.gender", "Søkerens kjønn", true],
-    ["applicant.email", "Søkerens e-post", true, "Påkrevd for kontakt"],
-    ["applicant.phone", "Søkerens telefonnummer", true],
-    ["applicant.birthDate", "Søkerens fødselsdato", true, "Påkrevd for alderskontroll"],
-    ["applicant.address.street", "Søkerens gateadresse", true],
-    ["applicant.address.postalCode", "Søkerens postnummer", true],
-    ["applicant.address.city", "Søkerens poststed", true],
-    ["craftType", "Håndverkstype", true],
-    ["admissionMethod", "Opptaksmetode", true, "Obligatorisk valg"],
-    ["files", "Dokumentasjon eller produktbilder", true, "Påkrevd"],
-    ["jury.education", "Relevant utdanning / realkompetanse", false],
-    ["jury.practice", "Relevant praksis", false],
-    ["jury.exhibitions", "Deltagelse på juryerte utstillinger", false],
-    ["jury.awards", "Designpriser og lignende", false],
-    ["jury.materials", "Materialer", false],
-    ["jury.formColorDecoration", "Form, farge og dekor", false],
-    ["jury.technique", "Fremstillingsteknikk", false],
-    ["jury.use", "Bruksområde", false],
-    ["jury.originality", "Originalitet", false],
-    ["jury.photographs", "Vedlagte fotografier viser", false],
-    ["localGroup.region", "Region for husflidslag", false],
-    ["localGroup.chapter", "Lokallag for husflidslag", false],
-    ["criteriaAccepted", "Bekreft medlemskriterier", true, "Påkrevd"],
-  ],
-};
-
-const emptyAddress = { street: "", postalCode: "", city: "" };
 const emptyPerson = {
   firstName: "",
   middleName: "",
@@ -192,26 +28,6 @@ const emptyPerson = {
   email: "",
   phone: "",
 };
-
-async function request(path, options = {}) {
-  const response = await fetch(`${API}${path}`, {
-    credentials: "include",
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
-      ...options.headers,
-    },
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(data.message || "Forespørselen kunne ikke fullføres.");
-    error.status = response.status;
-    throw error;
-  }
-  return data;
-}
 
 function getPath(object, path) {
   return path.split(".").reduce((value, key) => value?.[key], object);
@@ -338,6 +154,27 @@ function registrationFieldIssue(type, key, value, required, form) {
   return "";
 }
 
+const agreementDefaults = { termsAccepted: false, emailOffers: false, smsOffers: false };
+
+function AgreementFields({ form, onChange }) {
+  const checkbox = (fieldKey, label, extraProps = {}) => (
+    <CheckField fieldKey={fieldKey} label={label} checked={form[fieldKey]} onChange={(event) => onChange({ [fieldKey]: event.target.checked })} forceVisible {...extraProps} />
+  );
+  return (
+    <section className="membership-section">
+      {checkbox("termsAccepted", "Jeg aksepterer Norges Husflidslags vilkår og betingelser til bruk", { required: true, forceRequired: true })}
+      {checkbox("emailOffers", "Jeg ønsker å få tilsendt e-post om tilbud og kampanjer hos Norges Husflidslag")}
+      {checkbox("smsOffers", "Jeg ønsker å få tilsendt SMS om tilbud og kampanjer hos Norges Husflidslag")}
+    </section>
+  );
+}
+
+function validateAgreements(form) {
+  return form.termsAccepted
+    ? []
+    : [{ key: "termsAccepted", label: "Vilkår og betingelser", message: "må aksepteres" }];
+}
+
 function validateRegistration(type, form, config) {
   const issues = [];
   const specs = configurableFields[type] || [];
@@ -365,6 +202,8 @@ function validateRegistration(type, form, config) {
       addIssue(key, label, fieldValueForFlow(type, form, key), required);
     }
   }
+
+  issues.push(...validateAgreements(form));
 
   for (const field of config?.additionalFields?.[type] || []) {
     if (field.type === "section") continue;
@@ -461,320 +300,19 @@ function membershipActivationPath(value) {
     : `/medlemskap?aktiver=${encodeURIComponent(token)}`;
 }
 
-function Field({
-  label,
-  name,
-  value,
-  onChange,
-  type = "text",
-  required = false,
-  optional = false,
-  hint,
-  placeholder,
-  autoComplete,
-  fieldKey,
-  validationKey,
-  validationErrors,
-  forceRequired = false,
-  forceVisible = false,
-  ...props
-}) {
-  const formConfig = useContext(FormConfigContext);
-  const setting = formConfig?.fields?.[formConfig.flow]?.[fieldKey || label] || {};
-  if (setting.visible === false && !forceVisible) return null;
-  const fieldLabel = setting.label || label;
-  const fieldRequired = forceRequired || (setting.required ?? required);
-  const fieldPlaceholder = setting.placeholder ?? placeholder;
-  const validationMessage = (validationErrors || formConfig?.validationErrors)?.[validationKey || fieldKey || label];
-  return (
-    <label className={`membership-field${validationMessage ? " membership-field-invalid" : ""}`}>
-      <span>{fieldLabel}{optional && " (valgfritt)"}{fieldRequired && <span aria-hidden="true"> *</span>}</span>
-      <input
-        name={name || fieldKey || label}
-        type={type}
-        {...(type === "file" ? {} : { value: value ?? "" })}
-        onChange={onChange}
-        required={fieldRequired}
-        aria-invalid={Boolean(validationMessage)}
-        placeholder={fieldPlaceholder}
-        autoComplete={autoComplete}
-        {...props}
-      />
-      {hint && <small className="membership-field-hint">{hint}</small>}
-      {validationMessage && <small className="membership-validation-message">{validationMessage}</small>}
-    </label>
-  );
-}
-
-function TextAreaField({ label, fieldKey, value, onChange, rows = 4, required = false, validationErrors, validationKey = fieldKey }) {
-  const formConfig = useContext(FormConfigContext);
-  const setting = formConfig?.fields?.[formConfig.flow]?.[fieldKey] || {};
-  if (setting.visible === false) return null;
-  const fieldRequired = setting.required ?? required;
-  const validationMessage = (validationErrors || formConfig?.validationErrors)?.[validationKey];
-  return (
-    <label className={`membership-field membership-grid-wide${validationMessage ? " membership-field-invalid" : ""}`}>
-      <span>{setting.label || label}{fieldRequired && <span aria-hidden="true"> *</span>}</span>
-      <textarea rows={rows} value={value ?? ""} onChange={onChange} required={fieldRequired} aria-invalid={Boolean(validationMessage)} placeholder={setting.placeholder ?? label} />
-      {validationMessage && <small className="membership-validation-message">{validationMessage}</small>}
-    </label>
-  );
-}
-
-function CheckField({ label, fieldKey, checked, onChange, required = false, forceRequired = false, forceVisible = false, validationErrors, validationKey = fieldKey }) {
-  const formConfig = useContext(FormConfigContext);
-  const setting = formConfig?.fields?.[formConfig.flow]?.[fieldKey] || {};
-  if (setting.visible === false && !forceVisible) return null;
-  const fieldRequired = forceRequired || (setting.required ?? required);
-  const validationMessage = (validationErrors || formConfig?.validationErrors)?.[validationKey];
-  return (
-    <label className={`membership-check${validationMessage ? " membership-check-invalid" : ""}`}>
-      <input type="checkbox" checked={Boolean(checked)} onChange={onChange} required={fieldRequired} aria-invalid={Boolean(validationMessage)} />
-      {setting.label || label}
-      {fieldRequired && <span aria-hidden="true"> *</span>}
-      {validationMessage && <small className="membership-validation-message">{validationMessage}</small>}
-    </label>
-  );
-}
-
-function SelectField({ label, value, onChange, options, required = false, fieldKey, forceRequired = false, forceVisible = false, validationErrors, validationKey = fieldKey }) {
-  const formConfig = useContext(FormConfigContext);
-  const setting = formConfig?.fields?.[formConfig.flow]?.[fieldKey || label] || {};
-  if (setting.visible === false && !forceVisible) return null;
-  const isLocalGroupField = fieldKey?.endsWith(".region") || fieldKey?.endsWith(".chapter");
-  const fieldOptions = isLocalGroupField ? options : formConfig?.options?.[formConfig.flow]?.[fieldKey || label] || options;
-  const fieldRequired = forceRequired || (setting.required ?? required);
-  const validationMessage = (validationErrors || formConfig?.validationErrors)?.[validationKey];
-  return (
-    <label className={`membership-field${validationMessage ? " membership-field-invalid" : ""}`}>
-      <span>{setting.label || label}{fieldRequired && <span aria-hidden="true"> *</span>}</span>
-      <select value={value ?? ""} onChange={onChange} required={fieldRequired} aria-invalid={Boolean(validationMessage)}>
-        <option value="">Velg …</option>
-        {fieldOptions.map((option) => (
-          <option value={option} key={option}>{option}</option>
-        ))}
-      </select>
-      {validationMessage && <small className="membership-validation-message">{validationMessage}</small>}
-    </label>
-  );
-}
-
-function Section({ title, children, description }) {
-  const formConfig = useContext(FormConfigContext);
-  const setting = formConfig?.sections?.[formConfig.flow]?.[title] || {};
-  if (setting.visible === false) return null;
-  const sectionDescription = Object.hasOwn(setting, "description") ? setting.description : description;
-  return (
-    <section className="membership-section">
-      <h2>{setting.label || title}</h2>
-      {sectionDescription && <p className="membership-muted">{sectionDescription}</p>}
-      <div className="membership-grid">{children}</div>
-    </section>
-  );
-}
-
-function AddressFields({ value = emptyAddress, onChange, fieldPrefix, validationErrors = {} }) {
-  const autocompleteSection = `section-${fieldPrefix.replaceAll(".", "-")}`;
-  const updateStreet = (event) => {
-    onChange({
-      ...value,
-      street: event.target.value,
-      postalCode: "",
-      city: "",
-    });
-  };
-  return (
-    <>
-      <Field
-        label="Gateadresse"
-        fieldKey={`${fieldPrefix}.street`}
-        value={value.street}
-        onChange={updateStreet}
-        required
-        autoComplete={`${autocompleteSection} address-line1`}
-        validationErrors={validationErrors}
-      />
-      <Field
-        label="Postnummer"
-        fieldKey={`${fieldPrefix}.postalCode`}
-        value={value.postalCode}
-        onChange={(event) => onChange({ ...value, postalCode: event.target.value })}
-        required
-        inputMode="numeric"
-        autoComplete={`${autocompleteSection} postal-code`}
-        validationErrors={validationErrors}
-      />
-      <Field
-        label="Poststed"
-        fieldKey={`${fieldPrefix}.city`}
-        value={value.city}
-        onChange={(event) => onChange({ ...value, city: event.target.value })}
-        required
-        autoComplete={`${autocompleteSection} address-level2`}
-        validationErrors={validationErrors}
-      />
-    </>
-  );
-}
-
-function PersonFields({ title, value, onChange, includeEmail = true, includePhone = true, fieldPrefix, validationPrefix = fieldPrefix, validationErrors, forceRequired = false, forceVisible = false, forceVisibleFields = [], optionalFields = [], loginContactNotes = false, lockedFields = [] }) {
-  const set = (key) => (event) => onChange({ ...value, [key]: event.target.value });
-  const isForcedVisible = (key) => forceRequired || forceVisible || lockedFields.includes(key) || forceVisibleFields.includes(key);
-  return (
-    <Section title={title}>
-      <Field label="Fornavn" fieldKey={`${fieldPrefix}.firstName`} validationKey={`${validationPrefix}.firstName`} validationErrors={validationErrors} value={value.firstName} onChange={set("firstName")} required forceRequired={forceRequired || lockedFields.includes("firstName")} forceVisible={isForcedVisible("firstName")} autoComplete="given-name" />
-      <Field label="Mellomnavn (valgfritt)" fieldKey={`${fieldPrefix}.middleName`} validationKey={`${validationPrefix}.middleName`} validationErrors={validationErrors} value={value.middleName} onChange={set("middleName")} forceVisible={isForcedVisible("middleName")} autoComplete="additional-name" />
-      <Field label="Etternavn" fieldKey={`${fieldPrefix}.lastName`} validationKey={`${validationPrefix}.lastName`} validationErrors={validationErrors} value={value.lastName} onChange={set("lastName")} required forceRequired={forceRequired || lockedFields.includes("lastName")} forceVisible={isForcedVisible("lastName")} autoComplete="family-name" />
-      <SelectField label="Kjønn" fieldKey={`${fieldPrefix}.gender`} validationKey={`${validationPrefix}.gender`} validationErrors={validationErrors} value={value.gender} onChange={set("gender")} options={["Mann", "Kvinne", "Annet"]} required forceRequired={forceRequired || lockedFields.includes("gender")} forceVisible={isForcedVisible("gender")} />
-      {includeEmail && <Field label="E-post" fieldKey={`${fieldPrefix}.email`} validationKey={`${validationPrefix}.email`} validationErrors={validationErrors} type="email" value={value.email} onChange={set("email")} required optional={optionalFields.includes("email")} forceRequired={forceRequired || lockedFields.includes("email")} forceVisible={isForcedVisible("email")} hint={loginContactNotes ? "NB: Denne e-posten vil brukes til innlogging" : undefined} autoComplete="email" />}
-      {includePhone && <Field label="Telefonnummer" fieldKey={`${fieldPrefix}.phone`} validationKey={`${validationPrefix}.phone`} validationErrors={validationErrors} type="tel" value={value.phone} onChange={set("phone")} required optional={optionalFields.includes("phone")} forceRequired={forceRequired || lockedFields.includes("phone")} forceVisible={isForcedVisible("phone")} hint={loginContactNotes ? "NB: Dette telefonnummeret vil brukes til innlogging" : undefined} autoComplete="tel" />}
-    </Section>
-  );
-}
-
-function LocalGroupFields({ config, region, chapter, onChange, optional = false, fieldPrefix, validationErrors }) {
-  const regions = config?.regions || [];
-  const selectedRegion = regions.find((item) => item.name === region);
-  const chapters = selectedRegion?.chapters || [];
-  return (
-    <Section title="Velg lokallag" description={optional ? "Valgfritt ved kjøp. Mottakeren kan velge dette senere." : undefined}>
-      <SelectField
-        label="Region"
-        fieldKey={`${fieldPrefix}.region`}
-        value={region}
-        onChange={(event) => onChange(event.target.value, "")}
-        options={regions.map((item) => item.name)}
-        required={!optional}
-        validationErrors={validationErrors}
-      />
-      <SelectField
-        label="Lokallag"
-        fieldKey={`${fieldPrefix}.chapter`}
-        value={chapter}
-        onChange={(event) => onChange(region, event.target.value)}
-        options={chapters}
-        required={Boolean(region)}
-        forceRequired={Boolean(region)}
-        validationErrors={validationErrors}
-      />
-    </Section>
-  );
-}
-
-function PasswordFields({ password, confirmPassword, onChange, fieldPrefix, validationErrors }) {
-  const passwordKey = fieldPrefix ? `${fieldPrefix}.password` : "password";
-  const confirmationKey = fieldPrefix ? `${fieldPrefix}.confirmPassword` : "confirmPassword";
-  return (
-    <Section title="Passord">
-      <Field label="Passord" fieldKey={passwordKey} type="password" value={password} onChange={(event) => onChange("password", event.target.value)} required forceRequired forceVisible minLength={12} maxLength={200} autoComplete="new-password" validationErrors={validationErrors} />
-      <Field label="Bekreft passord" fieldKey={confirmationKey} type="password" value={confirmPassword} onChange={(event) => onChange("confirmPassword", event.target.value)} required forceRequired forceVisible minLength={12} maxLength={200} autoComplete="new-password" validationErrors={validationErrors} />
-      <p className="membership-note membership-grid-wide">Passordet må være minst 12 tegn. Bekreftelsen må være identisk.</p>
-    </Section>
-  );
-}
-
-function Message({ error, success }) {
-  if (error) return <p className="membership-alert membership-error" role="alert">{error}</p>;
-  if (success) return <p className="membership-alert membership-success" role="status">{success}</p>;
-  return null;
-}
-
-function DynamicFormFields({ fields, values, onChange, validationErrors }) {
-  const formConfig = useContext(FormConfigContext);
-  const errors = validationErrors || formConfig?.validationErrors || {};
-  return fields.map((field) => {
-    if (field.type === "section") {
-      return (
-        <section className="membership-section" key={field.id}>
-          <h2>{field.label}</h2>
-          {field.content && <p className="membership-muted">{field.content}</p>}
-        </section>
-      );
-    }
-    if (field.type === "checkbox") {
-      const validationMessage = errors[field.id];
-      return (
-        <label className={`membership-check${validationMessage ? " membership-check-invalid" : ""}`} key={field.id}>
-          <input
-            type="checkbox"
-            checked={Boolean(values[field.id])}
-            onChange={(event) => onChange(field.id, event.target.checked)}
-            required={field.required}
-            aria-invalid={Boolean(validationMessage)}
-          />
-          {field.label}{field.required && <span aria-hidden="true"> *</span>}
-          {validationMessage && <small className="membership-validation-message">{validationMessage}</small>}
-        </label>
-      );
-    }
-    if (field.type === "file") {
-      return (
-        <Field
-          key={field.id}
-          fieldKey={field.id}
-          label={field.label}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
-          multiple
-          onChange={(event) => onChange(field.id, Array.from(event.target.files || []))}
-          required={field.required}
-          validationErrors={errors}
-        />
-      );
-    }
-    if (field.type === "select") {
-      return (
-        <SelectField
-          key={field.id}
-          fieldKey={field.id}
-          label={field.label}
-          value={values[field.id]}
-          onChange={(event) => onChange(field.id, event.target.value)}
-          options={field.options || []}
-          required={field.required}
-          validationErrors={errors}
-        />
-      );
-    }
-    if (field.type === "textarea") {
-      return (
-        <TextAreaField
-          key={field.id}
-          fieldKey={field.id}
-          label={field.label}
-          value={values[field.id]}
-          onChange={(event) => onChange(field.id, event.target.value)}
-          rows={4}
-          required={field.required}
-          validationErrors={errors}
-        />
-      );
-    }
-    const type = field.type === "email" ? "email"
-      : field.type === "phone" ? "tel"
-        : field.type === "date" ? "date" : "text";
-    return (
-      <Field
-        key={field.id}
-        fieldKey={field.id}
-        label={field.label}
-        type={type}
-        value={values[field.id]}
-        onChange={(event) => onChange(field.id, event.target.value)}
-        required={field.required}
-        validationErrors={errors}
-      />
-    );
-  });
-}
-
 function CustomFormSubmission({ form }) {
   const [values, setValues] = useState({});
   const [error, setError] = useState("");
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
-  const validationIssues = validationAttempted ? validateCustomForm(form.fields, values) : [];
+  const includeAgreements = form.includeAgreements !== false;
+  const formValues = { ...agreementDefaults, ...values };
+  const findIssues = () => [
+    ...validateCustomForm(form.fields, values),
+    ...(includeAgreements ? validateAgreements(formValues) : []),
+  ];
+  const validationIssues = validationAttempted ? findIssues() : [];
   const validationErrors = Object.fromEntries(validationIssues.map((issue) => [issue.key, issue.message]));
 
   async function submit(event) {
@@ -782,12 +320,12 @@ function CustomFormSubmission({ form }) {
     setError("");
     setResult("");
     setValidationAttempted(true);
-    if (validateCustomForm(form.fields, values).length > 0) return;
+    if (findIssues().length > 0) return;
     setBusy(true);
     try {
       const fileFields = form.fields.filter((field) => field.type === "file");
       const payload = Object.fromEntries(
-        Object.entries(values).filter(([id]) => !fileFields.some((field) => field.id === id))
+        Object.entries(includeAgreements ? formValues : values).filter(([id]) => !fileFields.some((field) => field.id === id))
       );
       let body = JSON.stringify(payload);
       if (fileFields.some((field) => values[field.id]?.length)) {
@@ -826,6 +364,11 @@ function CustomFormSubmission({ form }) {
           />
         </div>
       </section>
+      {includeAgreements && (
+        <FormConfigContext.Provider value={{ validationErrors }}>
+          <AgreementFields form={formValues} onChange={(patch) => setValues((current) => ({ ...current, ...patch }))} />
+        </FormConfigContext.Provider>
+      )}
       <Message error={error} success={result} />
       <ValidationSummary issues={validationIssues} />
       <button className="membership-submit" disabled={busy}>
@@ -846,7 +389,7 @@ function RegistrationForms({ type, config }) {
     gift: { purchaser: { ...emptyPerson, birthDate: "", address: { ...emptyAddress } }, recipient: { ...emptyPerson, birthDate: "", address: { ...emptyAddress } }, guardian: { ...emptyPerson }, consent: false, region: "", chapter: "" },
     craft: { business: { name: "", organizationNumber: "", address: { ...emptyAddress }, phone: "", email: "", website: "" }, applicant: { ...emptyPerson, birthDate: "", address: { ...emptyAddress } }, craftType: "", admissionMethod: "", jury: {}, region: "", chapter: "", criteriaAccepted: false },
   }), []);
-  const form = { ...defaults[type], ...values };
+  const form = { ...agreementDefaults, ...defaults[type], ...values };
   const giftRecipientAge = type === "gift" ? getAge(form.recipient.birthDate) : null;
   const [result, setResult] = useState("");
   const [activationUrl, setActivationUrl] = useState("");
@@ -1036,6 +579,8 @@ function RegistrationForms({ type, config }) {
         onChange={(id, value) => setForm({ [id]: value })}
       />
 
+      <AgreementFields form={form} onChange={setForm} />
+
       <Message error={error} success={result} />
       {activationUrl && <p className="membership-alert membership-success">
         {type === "minor"
@@ -1108,11 +653,7 @@ function GiftActivation({ config, token, identifier, activationInfo }) {
   );
 }
 
-function GiftActivationEntry({ config, initialToken = "" }) {
-  return <ActivationFlow type="gift" config={config} initialToken={initialToken} />;
-}
-
-function GiftActivationCodeEntry({ onSubmit, code, setCode, error, busy, validationErrors = {}, validationIssues = [] }) {
+function ActivationCodeEntry({ onSubmit, code, setCode, error, busy, validationErrors = {}, validationIssues = [] }) {
   return (
     <form className="membership-form" onSubmit={onSubmit} noValidate>
       <section className="membership-section">
@@ -1130,103 +671,7 @@ function GiftActivationCodeEntry({ onSubmit, code, setCode, error, busy, validat
   );
 }
 
-export function GiftActivationEntryLegacy() {
-  const navigate = useNavigate();
-  const [activationValue, setActivationValue] = useState("");
-  const [error, setError] = useState("");
-
-  function continueToActivation(event) {
-    event.preventDefault();
-    setError("");
-    let token = activationValue.trim();
-    try {
-      const activationUrl = new URL(token, window.location.origin);
-      token = activationUrl.searchParams.get("aktiver") ||
-        activationUrl.pathname.match(/\/gift\/activate\/([^/]+)$/)?.[1] ||
-        token;
-    } catch {
-      // The input may be the token itself rather than a URL.
-    }
-    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token)) {
-      setError("Lim inn den personlige aktiveringslenken eller koden du mottok.");
-      return;
-    }
-    navigate(`/medlemskap?aktiver=${encodeURIComponent(token)}`);
-  }
-
-  return (
-    <form className="membership-form" onSubmit={continueToActivation}>
-      <section className="membership-section">
-        <h2>Aktiver mottatt medlemskap</h2>
-        <p>Lim inn den personlige aktiveringslenken eller koden du mottok.</p>
-        <label className="membership-field">
-          <span>Aktiveringslenke eller kode</span>
-          <input
-            type="text"
-            autoComplete="url"
-            value={activationValue}
-            onChange={(event) => setActivationValue(event.target.value)}
-            required
-          />
-        </label>
-      </section>
-      <Message error={error} />
-      <button className="membership-submit">Fortsett</button>
-    </form>
-  );
-}
-
-export function MinorAccountSetupEntryLegacy() {
-  const navigate = useNavigate();
-  const [activationValue, setActivationValue] = useState("");
-  const [error, setError] = useState("");
-
-  function continueToSetup(event) {
-    event.preventDefault();
-    setError("");
-    let token = activationValue.trim();
-    try {
-      const activationUrl = new URL(token, window.location.origin);
-      token = activationUrl.searchParams.get("aktiver-mindreaarig") ||
-        activationUrl.pathname.match(/\/minor\/activate\/([^/]+)$/)?.[1] ||
-        token;
-    } catch {
-      // The input may be the token itself rather than a URL.
-    }
-    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token)) {
-      setError("Lim inn aktiveringslenken eller koden som ble delt etter registreringen.");
-      return;
-    }
-    navigate(`/medlemskap?aktiver-mindreaarig=${encodeURIComponent(token)}`);
-  }
-
-  return (
-    <form className="membership-form" onSubmit={continueToSetup}>
-      <section className="membership-section">
-        <h2>Registrer bruker for mindreårig</h2>
-        <p>Lim inn aktiveringslenken eller koden som ble delt etter registreringen.</p>
-        <label className="membership-field">
-          <span>Aktiveringslenke eller kode</span>
-          <input
-            type="text"
-            autoComplete="url"
-            value={activationValue}
-            onChange={(event) => setActivationValue(event.target.value)}
-            required
-          />
-        </label>
-      </section>
-      <Message error={error} />
-      <button className="membership-submit">Fortsett</button>
-    </form>
-  );
-}
-
-function MinorAccountSetupEntry({ config, initialToken = "" }) {
-  return <ActivationFlow type="minor" config={config} initialToken={initialToken} />;
-}
-
-function MinorAccountSetup({ token, identifier }) {
+function AccountPasswordSetup({ type, token, identifier }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -1235,6 +680,7 @@ function MinorAccountSetup({ token, identifier }) {
   const [validationAttempted, setValidationAttempted] = useState(false);
   const validationIssues = validationAttempted ? validatePasswordSetup(password, confirmPassword) : [];
   const validationErrors = Object.fromEntries(validationIssues.map((issue) => [issue.key, issue.message]));
+  const isMinor = type === "minor";
 
   async function submit(event) {
     event.preventDefault();
@@ -1244,111 +690,16 @@ function MinorAccountSetup({ token, identifier }) {
     if (validatePasswordSetup(password, confirmPassword).length > 0) return;
     setBusy(true);
     try {
-      const result = await request(`/membership/minor/activate/${encodeURIComponent(token)}`, {
+      const result = await request(`/membership/${type}/activate/${encodeURIComponent(token)}`, {
         method: "POST",
         body: JSON.stringify({ identifier, password }),
       });
-      setSuccess(result.message || "Innloggingen for barnet er registrert.");
-      setPassword("");
-      setConfirmPassword("");
-      setValidationAttempted(false);
-    } catch (setupError) {
-      setError(setupError.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form className="membership-form" onSubmit={submit} noValidate>
-      <h2>Registrer bruker for mindreårig</h2>
-      <p>Velg passordet barnet skal bruke sammen med den registrerte e-postadressen.</p>
-      <section className="membership-section">
-        <label className="membership-field">
-          <span>Passord</span>
-          <input type="password" autoComplete="new-password" minLength={12} maxLength={200} value={password} onChange={(event) => setPassword(event.target.value)} required aria-invalid={Boolean(validationErrors.password)} />
-          {validationErrors.password && <small className="membership-validation-message">{validationErrors.password}</small>}
-        </label>
-        <label className="membership-field">
-          <span>Bekreft passord</span>
-          <input type="password" autoComplete="new-password" minLength={12} maxLength={200} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required aria-invalid={Boolean(validationErrors.confirmPassword)} />
-          {validationErrors.confirmPassword && <small className="membership-validation-message">{validationErrors.confirmPassword}</small>}
-        </label>
-      </section>
-      <Message error={error} success={success} />
-      <ValidationSummary issues={validationIssues} />
-      <button className="membership-submit" disabled={busy}>{busy ? "Lagrer …" : "Lagre innlogging"}</button>
-    </form>
-  );
-}
-
-export function CraftAccountSetupEntryLegacy() {
-  const navigate = useNavigate();
-  const [activationValue, setActivationValue] = useState("");
-  const [error, setError] = useState("");
-
-  function continueToSetup(event) {
-    event.preventDefault();
-    setError("");
-    let token = activationValue.trim();
-    try {
-      const activationUrl = new URL(token, window.location.origin);
-      token = activationUrl.searchParams.get("aktiver-haandverker") ||
-        activationUrl.pathname.match(/\/craft\/activate\/([^/]+)$/)?.[1] ||
-        token;
-    } catch {
-      // The input may be the token itself rather than a URL.
-    }
-    if (!/^[A-Za-z0-9_-]{30,60}$/.test(token)) {
-      setError("Lim inn aktiveringslenken du fikk etter at søknaden ble godkjent.");
-      return;
-    }
-    navigate(`/medlemskap?aktiver-haandverker=${encodeURIComponent(token)}`);
-  }
-
-  return (
-    <form className="membership-form" onSubmit={continueToSetup}>
-      <section className="membership-section">
-        <h2>Opprett passord for husflidshåndverker</h2>
-        <p>Lim inn den personlige aktiveringslenken du fikk etter at søknaden ble godkjent.</p>
-        <label className="membership-field">
-          <span>Aktiveringslenke eller kode</span>
-          <input type="text" autoComplete="url" value={activationValue} onChange={(event) => setActivationValue(event.target.value)} required />
-        </label>
-      </section>
-      <Message error={error} />
-      <button className="membership-submit">Fortsett</button>
-    </form>
-  );
-}
-
-function CraftAccountSetupEntry({ config, initialToken = "" }) {
-  return <ActivationFlow type="craft" config={config} initialToken={initialToken} />;
-}
-
-function CraftAccountSetup({ token, identifier }) {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [validationAttempted, setValidationAttempted] = useState(false);
-  const validationIssues = validationAttempted ? validatePasswordSetup(password, confirmPassword) : [];
-  const validationErrors = Object.fromEntries(validationIssues.map((issue) => [issue.key, issue.message]));
-
-  async function submit(event) {
-    event.preventDefault();
-    setError("");
-    setSuccess("");
-    setValidationAttempted(true);
-    if (validatePasswordSetup(password, confirmPassword).length > 0) return;
-    setBusy(true);
-    try {
-      const result = await request(`/membership/craft/activate/${encodeURIComponent(token)}`, {
-        method: "POST",
-        body: JSON.stringify({ identifier, password }),
-      });
-      setSuccess(`${result.message || "Husflidshåndverker-medlemskapet er aktivert."} Du kan nå logge inn med e-postadressen fra søknaden.`);
+      const successMessage = result.message || (isMinor
+        ? "Innloggingen for barnet er registrert."
+        : "Husflidshåndverker-medlemskapet er aktivert.");
+      setSuccess(isMinor
+        ? successMessage
+        : `${successMessage} Du kan nå logge inn med e-postadressen fra søknaden.`);
       setPassword("");
       setConfirmPassword("");
       setValidationAttempted(false);
@@ -1361,8 +712,10 @@ function CraftAccountSetup({ token, identifier }) {
 
   return (
     <form className="membership-form" onSubmit={submit} noValidate>
-      <h2>Opprett passord for husflidshåndverker</h2>
-      <p>Velg passordet du vil bruke når du logger inn med e-postadressen fra søknaden.</p>
+      <h2>{isMinor ? "Registrer bruker for mindreårig" : "Opprett passord for husflidshåndverker"}</h2>
+      <p>{isMinor
+        ? "Velg passordet barnet skal bruke sammen med den registrerte e-postadressen."
+        : "Velg passordet du vil bruke når du logger inn med e-postadressen fra søknaden."}</p>
       <PasswordFields
         password={password}
         confirmPassword={confirmPassword}
@@ -1371,7 +724,9 @@ function CraftAccountSetup({ token, identifier }) {
       />
       <Message error={error} success={success} />
       <ValidationSummary issues={validationIssues} />
-      <button className="membership-submit" disabled={busy}>{busy ? "Lagrer …" : "Lagre passord"}</button>
+      <button className="membership-submit" disabled={busy}>
+        {busy ? "Lagrer …" : isMinor ? "Lagre innlogging" : "Lagre passord"}
+      </button>
     </form>
   );
 }
@@ -1380,17 +735,14 @@ const activationTypes = {
   gift: {
     query: "aktiver",
     title: "Aktiver mottatt medlemskap",
-    path: (token) => `/membership/gift/activate/${encodeURIComponent(token)}`,
   },
   minor: {
     query: "aktiver-mindreaarig",
     title: "Registrer bruker for mindreårig",
-    path: (token) => `/membership/minor/activate/${encodeURIComponent(token)}`,
   },
   craft: {
     query: "aktiver-haandverker",
     title: "Opprett passord for husflidshåndverker",
-    path: (token) => `/membership/craft/activate/${encodeURIComponent(token)}`,
   },
 };
 
@@ -1402,7 +754,7 @@ function activationTokenFrom(value, type) {
     const pathToken = url.pathname.match(/\/(?:gift|minor|craft)\/activate\/([^/]+)$/)?.[1];
     if (queryToken || pathToken) return queryToken || pathToken;
   } catch {
-    // The value may be the token rather than a URL.
+    return trimmed;
   }
   return trimmed;
 }
@@ -1494,7 +846,7 @@ function ActivationFlow({ type, config, initialToken = "" }) {
   );
 
   if (step === "code") return (
-    <GiftActivationCodeEntry
+    <ActivationCodeEntry
       onSubmit={checkCode}
       code={code}
       setCode={setCode}
@@ -1515,371 +867,8 @@ function ActivationFlow({ type, config, initialToken = "" }) {
       />
     );
   }
-  if (type === "minor") return <MinorAccountSetup token={token} identifier={identifier} />;
-  return <CraftAccountSetup token={token} identifier={identifier} />;
-}
-
-export function AdminPanel() {
-  const [credentials, setCredentials] = useState({ email: "", password: "" });
-  const [authenticated, setAuthenticated] = useState(false);
-  const [config, setConfig] = useState(null);
-  const [applications, setApplications] = useState([]);
-  const [reviewNotes, setReviewNotes] = useState({});
-  const [activationLinks, setActivationLinks] = useState({});
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    request("/auth/me")
-      .then(() => Promise.all([
-        request("/admin/config"),
-        request("/admin/applications"),
-      ]))
-      .then(([settings, records]) => {
-        if (!active) return;
-        setAuthenticated(true);
-        setConfig(settings.config || settings);
-        setApplications(records.applications || []);
-      })
-      .catch((loadError) => {
-        if (active && loadError.status !== 401) setError(loadError.message);
-      });
-    return () => { active = false; };
-  }, []);
-
-  async function login(event) {
-    event.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      await request("/auth/login", { method: "POST", body: JSON.stringify(credentials) });
-      window.dispatchEvent(new Event("set18-auth-change"));
-      const [settings, records] = await Promise.all([
-        request("/admin/config"),
-        request("/admin/applications"),
-      ]);
-      setAuthenticated(true);
-      setConfig(settings.config || settings);
-      setApplications(records.applications || []);
-    } catch (loginError) {
-      setError(loginError.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function saveConfig(event) {
-    event.preventDefault();
-    setError("");
-    setSuccess("");
-    try {
-      const options = JSON.parse(config.optionsText || "{}");
-      if (options === null || Array.isArray(options) || typeof options !== "object") {
-        throw new Error("Alternativene må være et JSON-objekt.");
-      }
-      const regions = config.regionsText.split("\n").map((line) => {
-        const [name, ...chapters] = line.split(":");
-        return { name: name.trim(), chapters: chapters.join(":").split(",").map((item) => item.trim()).filter(Boolean) };
-      }).filter((region) => region.name);
-      const fields = config.fields || {};
-      const requiredFields = Object.fromEntries(membershipTypes.map(([flow]) => [
-        flow,
-        Object.entries(fields[flow] || {})
-          .filter(([field, setting]) => (setting.required &&
-            !(flow === "minor" && field === "password")) ||
-            (flow === "minor" && ["child.email", "child.phone"].includes(field)))
-          .map(([field]) => field),
-      ]));
-      requiredFields.minor = [...new Set([
-        ...requiredFields.minor,
-        "child.email",
-        "child.phone",
-      ])];
-      const payload = { ...config, regions, fields, requiredFields, options };
-      delete payload.regionsText;
-      delete payload.optionsText;
-      const result = await request("/admin/config", { method: "PUT", body: JSON.stringify(payload) });
-      setConfig({
-        ...payload,
-        regionsText: regions.map((item) => `${item.name}: ${item.chapters.join(", ")}`).join("\n"),
-        optionsText: JSON.stringify(options, null, 2),
-      });
-      setSuccess(result.message || "Innstillingene er lagret.");
-    } catch (saveError) {
-      setError(saveError.message);
-    }
-  }
-  async function logout() {
-    try {
-      await request("/auth/logout", { method: "POST", body: JSON.stringify({}) });
-      setAuthenticated(false);
-      setConfig(null);
-      window.dispatchEvent(new Event("set18-auth-change"));
-    } catch (logoutError) {
-      setError(logoutError.message);
-    }
-  }
-  async function reviewApplication(id, status) {
-    setError("");
-    setSuccess("");
-    try {
-      const result = await request(`/admin/applications/${encodeURIComponent(id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status, note: reviewNotes[id] || "" }),
-      });
-      if (result.activationUrl) {
-        setActivationLinks((current) => ({ ...current, [id]: result.activationUrl }));
-      } else if (status === "approved") {
-        setActivationLinks((current) => {
-          const next = { ...current };
-          delete next[id];
-          return next;
-        });
-      }
-      setSuccess(result.message || "Søknaden er oppdatert.");
-      const records = await request("/admin/applications");
-      setApplications(records.applications || []);
-    } catch (reviewError) {
-      setError(reviewError.message);
-    }
-  }
-
-  function updatePresetFields(flow, fields) {
-    setConfig({
-      ...editableConfig,
-      additionalFields: { ...editableConfig.additionalFields, [flow]: fields },
-    });
-  }
-
-  function updateCustomForms(customForms) {
-    setConfig({ ...editableConfig, customForms });
-  }
-
-  if (!authenticated) return (
-    <form className="membership-form admin-login" onSubmit={login}>
-      <h2>Administratorinnlogging</h2>
-      <Field label="E-post" type="email" value={credentials.email} onChange={(event) => setCredentials({ ...credentials, email: event.target.value })} required autoComplete="username" />
-      <Field label="Passord" type="password" value={credentials.password} onChange={(event) => setCredentials({ ...credentials, password: event.target.value })} required autoComplete="current-password" />
-      <Message error={error} />
-      <button className="membership-submit" disabled={busy}>{busy ? "Logger inn …" : "Logg inn"}</button>
-      <p className="membership-note">Opprett administratorlegitimasjon via miljøvariablene som er dokumentert i backend.</p>
-    </form>
-  );
-
-  const editableConfig = config && {
-    ...config,
-    regionsText: config.regionsText || (config.regions || []).map((item) => `${item.name}: ${(item.chapters || []).join(", ")}`).join("\n"),
-    optionsText: config.optionsText || JSON.stringify(config.options || {}, null, 2),
-  };
-  return (
-    <div className="membership-admin">
-      <div className="membership-admin-heading"><h2>Admin: medlemskap og søknader</h2><button className="membership-secondary" type="button" onClick={logout}>Logg ut</button></div>
-      <Message error={error} />
-      {editableConfig && <form className="membership-form" onSubmit={saveConfig}>
-        <Section title="Aktive skjemaer">
-          {membershipTypes.map(([key, label]) => <label className="membership-check" key={key}><input type="checkbox" checked={editableConfig.membershipTypes?.[key] !== false} onChange={(event) => setConfig({ ...editableConfig, membershipTypes: { ...editableConfig.membershipTypes, [key]: event.target.checked } })} />{label}</label>)}
-        </Section>
-        <Section title="Felt i skjemaene" description="Slå felt av/på, velg om de er obligatoriske, og endre etiketten som vises. Alders- og samtykkekrav valideres også av backend.">
-          {membershipTypes.map(([flow, flowLabel]) => (
-            <section className="membership-field-settings membership-grid-wide" key={flow}>
-              <h3>{flowLabel}</h3>
-              {(configurableFields[flow] || []).map(([fieldKey, defaultLabel, defaultRequired, locked]) => {
-                const setting = editableConfig.fields?.[flow]?.[fieldKey] || {};
-                const isRequiredField = flow === "minor" &&
-                  ["child.email", "child.phone"].includes(fieldKey);
-                const update = (patch) => setConfig({
-                  ...editableConfig,
-                  fields: {
-                    ...editableConfig.fields,
-                    [flow]: {
-                      ...editableConfig.fields?.[flow],
-                      [fieldKey]: { ...setting, ...patch },
-                    },
-                  },
-                });
-                return (
-                  <div className="membership-setting-row" key={fieldKey}>
-                    <strong>{defaultLabel}</strong>
-                    {locked || isRequiredField
-                      ? <span className="membership-setting-locked">{typeof locked === "string" ? locked : "Påkrevd"}</span>
-                      : <>
-                        <label><input type="checkbox" checked={setting.visible !== false} onChange={(event) => update({ visible: event.target.checked })} /> Vis</label>
-                        <label><input type="checkbox" checked={setting.required ?? defaultRequired} onChange={(event) => update({ required: event.target.checked })} /> Obligatorisk</label>
-                      </>}
-                    <input aria-label={`Etikett: ${defaultLabel}`} value={setting.label ?? ""} placeholder={defaultLabel} onChange={(event) => update({ label: event.target.value })} />
-                  </div>
-                );
-              })}
-            </section>
-          ))}
-        </Section>
-        <Section title="Flere felt i standardskjemaene" description="Legg til egne felt og innholdsbokser i de eksisterende medlemskapspresetene. Slett et felt for å fjerne det fra skjemaet.">
-          {membershipTypes.map(([flow, flowLabel]) => {
-            const fields = editableConfig.additionalFields?.[flow] || [];
-            return (
-              <section className="membership-field-settings membership-grid-wide" key={flow}>
-                <h3>{flowLabel}</h3>
-                {fields.map((field, index) => (
-                  <BuilderFieldEditor
-                    key={field.id}
-                    field={field}
-                    allowFiles={false}
-                    onChange={(updated) => updatePresetFields(flow, fields.map((item, itemIndex) => itemIndex === index ? updated : item))}
-                    onRemove={() => updatePresetFields(flow, fields.filter((_, itemIndex) => itemIndex !== index))}
-                  />
-                ))}
-                <button className="membership-secondary" type="button" onClick={() => updatePresetFields(flow, [...fields, createBuilderField()])}>
-                  Legg til felt eller innholdsboks
-                </button>
-              </section>
-            );
-          })}
-        </Section>
-        <Section title="Innholdsbokser i standardskjemaene" description="Endre overskrifter og hjelpetekster som vises inne i standardskjemaene. Tøm hjelpeteksten for å fjerne den fra nettsiden.">
-          {membershipTypes.map(([flow, flowLabel]) => (
-            <section className="membership-field-settings membership-grid-wide" key={flow}>
-              <h3>{flowLabel}</h3>
-              {configurableSections[flow].map((title) => {
-                const setting = editableConfig.sections?.[flow]?.[title] || {};
-                const update = (patch) => setConfig({
-                  ...editableConfig,
-                  sections: {
-                    ...editableConfig.sections,
-                    [flow]: {
-                      ...editableConfig.sections?.[flow],
-                      [title]: { ...setting, ...patch },
-                    },
-                  },
-                });
-                return (
-                  <div className="membership-content-setting" key={title}>
-                    <strong>{title}</strong>
-                    <label className="membership-field">
-                      <span>Overskrift</span>
-                      <input value={setting.label ?? ""} placeholder={title} maxLength={120} onChange={(event) => update({ label: event.target.value })} />
-                    </label>
-                    <label className="membership-field">
-                      <span>Hjelpetekst</span>
-                      <textarea rows="3" value={setting.description ?? ""} placeholder="Ingen tilpasset hjelpetekst" maxLength={2000} onChange={(event) => update({ description: event.target.value })} />
-                    </label>
-                  </div>
-                );
-              })}
-            </section>
-          ))}
-        </Section>
-        <Section title="Egendefinerte medlemskapsskjemaer" description="Lag et helt nytt skjema fra blankt. Innsendinger lagres som søknader for administrator og oppretter ikke medlemskonto automatisk.">
-          {(editableConfig.customForms || []).map((form, formIndex) => (
-            <section className="membership-custom-form-editor membership-grid-wide" key={form.id}>
-              <div className="membership-grid">
-                <label className="membership-field">
-                  <span>Skjemanavn</span>
-                  <input value={form.name} maxLength={100} onChange={(event) => {
-                    const customForms = [...editableConfig.customForms];
-                    customForms[formIndex] = { ...form, name: event.target.value };
-                    updateCustomForms(customForms);
-                  }} />
-                </label>
-                <label className="membership-check">
-                  <input type="checkbox" checked={form.active} onChange={(event) => {
-                    const customForms = [...editableConfig.customForms];
-                    customForms[formIndex] = { ...form, active: event.target.checked };
-                    updateCustomForms(customForms);
-                  }} />
-                  Aktivt på nettsiden
-                </label>
-                <label className="membership-field membership-grid-wide">
-                  <span>Beskrivelse</span>
-                  <textarea rows="3" maxLength={1000} value={form.description} onChange={(event) => {
-                    const customForms = [...editableConfig.customForms];
-                    customForms[formIndex] = { ...form, description: event.target.value };
-                    updateCustomForms(customForms);
-                  }} />
-                </label>
-              </div>
-              <h4>Felt og innhold</h4>
-              {form.fields.map((field, fieldIndex) => (
-                <BuilderFieldEditor
-                  key={field.id}
-                  field={field}
-                  onChange={(updated) => {
-                    const customForms = [...editableConfig.customForms];
-                    customForms[formIndex] = {
-                      ...form,
-                      fields: form.fields.map((item, itemIndex) => itemIndex === fieldIndex ? updated : item),
-                    };
-                    updateCustomForms(customForms);
-                  }}
-                  onRemove={() => {
-                    const customForms = [...editableConfig.customForms];
-                    customForms[formIndex] = {
-                      ...form,
-                      fields: form.fields.filter((_, itemIndex) => itemIndex !== fieldIndex),
-                    };
-                    updateCustomForms(customForms);
-                  }}
-                />
-              ))}
-              <div className="membership-review-actions">
-                <button className="membership-secondary" type="button" onClick={() => {
-                  const customForms = [...editableConfig.customForms];
-                  customForms[formIndex] = { ...form, fields: [...form.fields, createBuilderField()] };
-                  updateCustomForms(customForms);
-                }}>Legg til felt eller innholdsboks</button>
-                <button className="membership-text-button" type="button" onClick={() => updateCustomForms(editableConfig.customForms.filter((_, index) => index !== formIndex))}>
-                  Slett skjema
-                </button>
-              </div>
-            </section>
-          ))}
-          <button className="membership-secondary" type="button" onClick={() => {
-            const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-            updateCustomForms([
-              ...(editableConfig.customForms || []),
-              { id: `custom_${suffix}`, name: "Nytt medlemskapsskjema", description: "", active: false, fields: [] },
-            ]);
-          }}>Opprett blankt skjema</button>
-        </Section>
-        <Section title="Valg i nedtrekkslister" description="JSON med alternativ per skjema og feltnøkkel. Kjønnseksempel: { &quot;regular&quot;: { &quot;person.gender&quot;: [&quot;Mann&quot;, &quot;Kvinne&quot;, &quot;Annet&quot;] } }">
-          <label className="membership-field membership-grid-wide"><span>Alternativer (JSON)</span><textarea rows="8" value={editableConfig.optionsText} onChange={(event) => setConfig({ ...editableConfig, optionsText: event.target.value })} /></label>
-        </Section>
-        <Section title="Regioner og lokallag" description="Én region per linje: Regionnavn: lokallag 1, lokallag 2">
-          <label className="membership-field membership-grid-wide"><span>Tilgjengelige regioner og lokallag</span><textarea rows="8" value={editableConfig.regionsText} onChange={(event) => setConfig({ ...editableConfig, regionsText: event.target.value })} /></label>
-        </Section>
-        <Section title="Juryert opptak">
-          <label className="membership-field membership-grid-wide"><span>Informasjon om innsending av produkter</span><textarea rows="4" value={editableConfig.craftShippingInstructions || ""} onChange={(event) => setConfig({ ...editableConfig, craftShippingInstructions: event.target.value })} /></label>
-        </Section>
-        <Message error={error} success={success} />
-        <button className="membership-submit">Lagre konfigurasjon</button>
-      </form>}
-      <section className="membership-section">
-        <h2>Mottatte søknader</h2>
-        {applications.length === 0 ? <p>Ingen søknader å vise.</p> : <ul className="membership-applications">{applications.map((application) => (
-          <li key={application.id}>
-            <strong>{application.formName || application.type || application.kind || "Søknad"}</strong> — {application.createdAt || application.created_at || "Dato ikke oppgitt"} {application.status && <span>({application.status})</span>}
-            <details>
-              <summary>Vis søknadsopplysninger og vedlegg</summary>
-              <pre className="membership-profile">{JSON.stringify(application.profile || {}, null, 2)}</pre>
-              {application.files?.length > 0 && <ul>{application.files.map((file) => <li key={file.id}><a href={`${API}/admin/applications/${encodeURIComponent(application.id)}/files/${encodeURIComponent(file.id)}`}>{file.originalName}</a> ({Math.ceil(file.size / 1024)} KB)</li>)}</ul>}
-              {["craft", "custom"].includes(application.type) && <>
-                <label className="membership-field"><span>Vurderingsnotat</span><textarea rows="3" value={reviewNotes[application.id] ?? application.reviewNote ?? ""} onChange={(event) => setReviewNotes({ ...reviewNotes, [application.id]: event.target.value })} /></label>
-                <div className="membership-review-actions">
-                  <button className="membership-secondary" type="button" onClick={() => reviewApplication(application.id, "approved")}>Godkjenn</button>
-                  <button className="membership-secondary" type="button" onClick={() => reviewApplication(application.id, "rejected")}>Avslå</button>
-                  <button className="membership-secondary" type="button" onClick={() => reviewApplication(application.id, "pending_review")}>Sett til vurdering</button>
-                </div>
-                {activationLinks[application.id] && <p className="membership-note">
-                  Del denne personlige lenken privat med søkeren. Den gir bare tilgang til å opprette passord, utløper etter 30 dager og kan brukes én gang:{" "}
-                  <a href={activationLinks[application.id]}>{activationLinks[application.id]}</a>
-                </p>}
-              </>}
-            </details>
-          </li>
-        ))}</ul>}
-      </section>
-    </div>
-  );
+  if (type === "minor") return <AccountPasswordSetup type="minor" token={token} identifier={identifier} />;
+  return <AccountPasswordSetup type="craft" token={token} identifier={identifier} />;
 }
 
 export default function Membership() {
@@ -1887,6 +876,7 @@ export default function Membership() {
   const requestedType = searchParams.get("type");
   const [config, setConfig] = useState(null);
   const [loadError, setLoadError] = useState("");
+  const { authenticated: isAdmin, error: adminStatusError } = useAdminSession();
   const [type, setType] = useState(() =>
     membershipTypes.some(([key]) => key === requestedType) || requestedType?.startsWith("custom_")
       ? requestedType
@@ -1927,6 +917,14 @@ export default function Membership() {
             ? "Aktiver medlemskap"
             : "Medlemskap og søknader"}</h1>
       {loadError && <Message error={loadError} />}
+      {isAdmin && <section className="membership-admin-card">
+        <div>
+          <h2>Rediger medlemskap</h2>
+          <p>Administrer medlemskapsskjemaer og innsendte søknader.</p>
+        </div>
+        <Link className="membership-submit" to="/medlemskap/rediger">Åpne administrasjon</Link>
+      </section>}
+      {adminStatusError && <Message error={adminStatusError} />}
       <>
         {!activationMode && activeOptions.length > 0 && <nav className="membership-tabs" aria-label="Skjematype">
           {activeOptions.map(([key, label]) => <button key={key} type="button" className={selectedType === key ? "selected" : ""} onClick={() => setType(key)}>{label}</button>)}
@@ -1936,16 +934,17 @@ export default function Membership() {
           : !config
             ? <p>Laster innstillinger …</p>
             : craftToken || craftActivationEntry
-              ? <CraftAccountSetupEntry config={config} initialToken={craftToken || ""} />
+              ? <ActivationFlow type="craft" config={config} initialToken={craftToken || ""} />
               : minorToken || minorActivationEntry
-                ? <MinorAccountSetupEntry config={config} initialToken={minorToken || ""} />
+                ? <ActivationFlow type="minor" config={config} initialToken={minorToken || ""} />
                 : giftToken || giftActivationEntry
-                  ? <GiftActivationEntry config={config} initialToken={giftToken || ""} />
+                  ? <ActivationFlow type="gift" config={config} initialToken={giftToken || ""} />
                   : activeOptions.length === 0
                     ? <p>Ingen medlemskap eller skjemaer er åpne for registrering nå.</p>
                     : config.customForms?.some((form) => form.id === selectedType)
                       ? <CustomFormSubmission key={selectedType} form={config.customForms.find((form) => form.id === selectedType)} />
                       : <RegistrationForms key={selectedType} type={selectedType} config={config} />}
+        <p className="membership-note">* Obligatoriske felt: Må fylles ut</p>
         <p className="membership-note">Dette er en lokal utviklingsversjon. Ikke bruk ekte personopplysninger. Betaling og e-postutsending er ikke koblet til.</p>
       </>
     </main>

@@ -1,0 +1,213 @@
+import { after, before, describe, test } from "node:test";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import net from "node:net";
+import os from "node:os";
+import path from "node:path";
+
+const adminLogin = { email: "admin@test.no", password: "AdminPassord1234" };
+const memberLogin = { email: "ola@test.no", password: "Passord123456" };
+const registration = {
+  birthDate: "1990-01-01",
+  person: { firstName: "Ola", lastName: "Nordmann", gender: "Mann", email: memberLogin.email, phone: "91234567" },
+  address: { street: "Gata 1", postalCode: "1670", city: "Kråkerøy" },
+  localGroup: { region: "Østfold", chapter: "Moss" },
+  password: memberLogin.password,
+  confirmPassword: memberLogin.password,
+  termsAccepted: true
+};
+const activity = {
+  title: "Strikkekurs",
+  date: "2099-01-01",
+  time: "10:00",
+  location: "Moss",
+  category: "Kurs",
+  description: "",
+  ticketCapacity: 5,
+  discount: { type: "percent", value: 50, memberTypes: ["regular"], startDate: "", endDate: "" },
+  ticketTypes: [{ name: "Voksen", description: "", price: 200, quantity: 4, memberTypes: ["regular"] }]
+};
+
+let server;
+let dataDirectory;
+let baseUrl;
+
+function freePort() {
+  return new Promise((resolve) => {
+    const probe = net.createServer().listen(0, () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+function client() {
+  let cookies = "";
+  return async (route, { method = "GET", body, form } = {}) => {
+    const response = await fetch(`${baseUrl}/api${route}`, {
+      method,
+      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(cookies ? { Cookie: cookies } : {}) },
+      body: form || (body ? JSON.stringify(body) : undefined)
+    });
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) cookies = setCookie.split(";")[0];
+    return { status: response.status, data: await response.json().catch(() => ({})) };
+  };
+}
+
+function activityForm(overrides = {}) {
+  const form = new FormData();
+  form.set("activity", JSON.stringify({ ...activity, ...overrides }));
+  return form;
+}
+
+before(async () => {
+  dataDirectory = await mkdtemp(path.join(os.tmpdir(), "set18-test-"));
+  const port = await freePort();
+  baseUrl = `http://127.0.0.1:${port}`;
+  server = spawn(process.execPath, ["server.js"], {
+    env: {
+      ...process.env,
+      PORT: String(port),
+      DATA_DIR: dataDirectory,
+      ADMIN_EMAIL: adminLogin.email,
+      ADMIN_PASSWORD: adminLogin.password
+    },
+    stdio: "ignore"
+  });
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (await fetch(`${baseUrl}/api/health`).then((response) => response.ok, () => false)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("Serveren startet ikke");
+});
+
+after(async () => {
+  server.kill();
+  await rm(dataDirectory, { recursive: true, force: true });
+});
+
+test("den offentlige aktivitetslisten fungerer med standardaktivitetene", async () => {
+  const list = await fetch(`${baseUrl}/api/activities`).then((response) => response.json());
+  assert.ok(Array.isArray(list) && list.length > 0);
+});
+
+describe("administrator", () => {
+  test("avviser feil passord og godtar riktig", async () => {
+    const admin = client();
+    assert.equal((await admin("/auth/login", { method: "POST", body: { ...adminLogin, password: "feil" } })).status, 401);
+    const login = await admin("/auth/login", { method: "POST", body: adminLogin });
+    assert.equal(login.status, 200);
+    assert.equal(login.data.admin.role, "owner");
+  });
+
+  test("hovedadministrator kan legge til og fjerne administratorer", async () => {
+    const owner = client();
+    await owner("/auth/login", { method: "POST", body: adminLogin });
+    const created = await owner("/auth/admins", { method: "POST", body: { email: "b@test.no", password: "AndreAdmin1234" } });
+    assert.equal(created.status, 201);
+
+    const second = client();
+    await second("/auth/login", { method: "POST", body: { email: "b@test.no", password: "AndreAdmin1234" } });
+    assert.equal((await second("/auth/admins")).status, 403);
+
+    assert.equal((await owner(`/auth/admins/${created.data.id}`, { method: "DELETE" })).status, 200);
+    assert.equal((await second("/auth/me")).status, 401);
+  });
+});
+
+describe("medlemmer og bestillinger", () => {
+  let admin;
+  let member;
+  let activityId;
+
+  before(async () => {
+    admin = client();
+    await admin("/auth/login", { method: "POST", body: adminLogin });
+    member = client();
+  });
+
+  test("registrering krever vilkår og avviser duplikater", async () => {
+    const withoutTerms = await member("/membership/regular", { method: "POST", body: { ...registration, termsAccepted: false } });
+    assert.equal(withoutTerms.status, 400);
+    assert.equal((await member("/membership/regular", { method: "POST", body: registration })).status, 201);
+    assert.equal((await member("/membership/regular", { method: "POST", body: registration })).status, 409);
+  });
+
+  test("innlogging gir tilgang til Min side", async () => {
+    assert.equal((await member("/membership/me")).status, 401);
+    assert.equal((await member("/membership/login", { method: "POST", body: memberLogin })).status, 200);
+    const me = await member("/membership/me");
+    assert.equal(me.data.member.expired, false);
+  });
+
+  test("bestilling bruker rabatt og respekterer kapasitet", async () => {
+    const created = await admin("/activities", { method: "POST", form: activityForm() });
+    assert.equal(created.status, 201);
+    activityId = created.data.id;
+
+    const order = await member("/membership/orders", { method: "POST", body: { activityId, ticketName: "Voksen", quantity: 2 } });
+    assert.equal(order.status, 201);
+    assert.equal(order.data.unitPrice, 100);
+    assert.equal(order.data.totalPrice, 200);
+
+    const tooMany = await member("/membership/orders", { method: "POST", body: { activityId, ticketName: "Voksen", quantity: 3 } });
+    assert.equal(tooMany.status, 409);
+
+    const publicActivity = await fetch(`${baseUrl}/api/activities/${activityId}`).then((response) => response.json());
+    assert.equal(publicActivity.remainingTickets.byType.Voksen, 2);
+  });
+
+  test("solgte billetter kan ikke fjernes ved redigering", async () => {
+    const lowered = await admin(`/activities/${activityId}`, {
+      method: "PUT",
+      form: activityForm({ ticketTypes: [{ ...activity.ticketTypes[0], quantity: 1 }] })
+    });
+    assert.equal(lowered.status, 409);
+  });
+
+  test("avbestilling frigjør billetter", async () => {
+    const [order] = (await member("/membership/orders")).data;
+    assert.equal((await member(`/membership/orders/${order.id}`, { method: "DELETE" })).status, 200);
+    assert.equal((await member(`/membership/orders/${order.id}`, { method: "DELETE" })).status, 409);
+  });
+
+  test("utløpt medlemskap kan ikke kjøpe før fornyelse", async () => {
+    const [{ id }] = (await admin("/admin/members")).data.members;
+    await admin(`/admin/members/${id}`, { method: "PATCH", body: { validUntil: "2020-01-01" } });
+    const blocked = await member("/membership/orders", { method: "POST", body: { activityId, ticketName: "Voksen", quantity: 1 } });
+    assert.equal(blocked.status, 403);
+    assert.equal((await member("/membership/me/renew", { method: "POST", body: {} })).status, 200);
+    assert.equal((await member("/membership/orders", { method: "POST", body: { activityId, ticketName: "Voksen", quantity: 1 } })).status, 201);
+  });
+
+  test("utkast og arkiverte aktiviteter vises bare for administrator", async () => {
+    await admin(`/activities/${activityId}`, { method: "PUT", form: activityForm({ status: "draft" }) });
+    const publicList = await fetch(`${baseUrl}/api/activities`).then((response) => response.json());
+    assert.equal(publicList.some((item) => item.id === activityId), false);
+    assert.equal((await admin("/activities?scope=all")).data.some((item) => item.id === activityId), true);
+
+    await admin(`/activities/${activityId}`, { method: "DELETE" });
+    const all = (await admin("/activities?scope=all")).data;
+    assert.equal(all.find((item) => item.id === activityId).status, "archived");
+    const orders = (await member("/membership/orders")).data;
+    assert.ok(orders.every((order) => order.status === "cancelled"));
+  });
+
+  test("passordbytte og sletting av medlemskap", async () => {
+    const newPassword = "NyttPassord12345";
+    assert.equal((await member("/membership/me/password", { method: "POST", body: { currentPassword: "feil", newPassword } })).status, 401);
+    assert.equal((await member("/membership/me/password", { method: "POST", body: { currentPassword: memberLogin.password, newPassword } })).status, 200);
+    assert.equal((await member("/membership/me", { method: "DELETE", body: { password: newPassword } })).status, 200);
+    assert.equal((await client()("/membership/login", { method: "POST", body: { email: memberLogin.email, password: newPassword } })).status, 401);
+  });
+
+  test("administrative handlinger havner i revisjonsloggen", async () => {
+    const { entries } = (await admin("/admin/audit-log")).data;
+    const actions = entries.map((entry) => entry.action);
+    for (const expected of ["activity.create", "activity.update", "activity.archive", "member.update"]) {
+      assert.ok(actions.includes(expected), expected);
+    }
+  });
+});
