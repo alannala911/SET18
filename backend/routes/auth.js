@@ -50,11 +50,6 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
-function requireOwner(req, res, next) {
-  if (req.admin.role !== "owner") return res.status(403).json({ message: "Kun hovedadministrator kan gjøre dette" });
-  next();
-}
-
 function matchingSecret(input, configured) {
   if (typeof input !== "string" || typeof configured !== "string") return false;
   const submitted = createHash("sha256").update(input).digest();
@@ -136,11 +131,11 @@ router.post("/me/password", requireAdmin, (req, res, next) => {
 
 const publicAdmin = ({ id, email, role, createdAt }) => ({ id, email, role, createdAt });
 
-router.get("/admins", requireAdmin, requireOwner, (req, res) => {
+router.get("/admins", requireAdmin, (req, res) => {
   res.json(readStore().admins.map(publicAdmin));
 });
 
-router.post("/admins", requireAdmin, requireOwner, async (req, res, next) => {
+router.post("/admins", requireAdmin, async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
@@ -163,7 +158,7 @@ router.post("/admins", requireAdmin, requireOwner, async (req, res, next) => {
   }
 });
 
-router.delete("/admins/:id", requireAdmin, requireOwner, async (req, res, next) => {
+router.delete("/admins/:id", requireAdmin, async (req, res, next) => {
   try {
     const removed = await updateStore((state) => {
       const admin = state.admins.find((item) => item.id === req.params.id);

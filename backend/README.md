@@ -8,15 +8,38 @@ Requires Node.js 20+ and npm. From this directory:
 npm install
 export ADMIN_EMAIL='admin@example.test'
 export ADMIN_PASSWORD='use-a-long-unique-local-secret'
+# Optional: use a hosted MySQL database instead of the local JSON store.
+# Set MYSQL_SSL=true when the database provider requires TLS.
+# export MYSQL_URL='mysql://user:password@host:3306/database'
+# export MYSQL_SSL=true
 # Optional: set this to the exact browser origin(s), comma-separated.
 export CORS_ORIGINS='http://localhost:5173,http://127.0.0.1:5173'
 npm run check
 npm start
 ```
 
-`ADMIN_EMAIL` and `ADMIN_PASSWORD` seed the main administrator (`owner`) on first login; after that the password is stored hashed in the application store and is changed in the app or through the forgot-password flow. They have no defaults. `PORT` defaults to `3000`; `DATA_DIR` defaults to `./data` relative to the backend working directory; `PUBLIC_FRONTEND_URL` defaults to `http://localhost:5173` and controls activation and profile-change URLs. To enable profile-change and password-reset emails, set `SMTP_HOST`, `SMTP_FROM`, and optionally `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASS`, and `SMTP_SECURE=true` when required by the provider. Port `465` uses TLS by default. Without SMTP configuration, the request endpoint reports that email delivery is unavailable. Use a persistent writable `DATA_DIR` for durable local storage. Do not expose it through a static file server. Uploaded files are private and are only retrievable by an authenticated admin.
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` seed the main administrator (`owner`) on first login; after that the password is stored hashed in the application store and is changed in the app or through the forgot-password flow. They have no defaults. `PORT` defaults to `3000`; `DATA_DIR` defaults to `./data` relative to the backend working directory; `PUBLIC_FRONTEND_URL` defaults to `http://localhost:5173` and controls activation and profile-change URLs. To enable profile-change and password-reset emails, set `SMTP_HOST`, `SMTP_FROM`, and optionally `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASS`, and `SMTP_SECURE=true` when required by the provider. Port `465` uses TLS by default. Without SMTP configuration, the request endpoint reports that email delivery is unavailable.
 
-The JSON store and private uploads are created under `DATA_DIR` and ignored by git. **Stored member and application personal information is unencrypted. Use test data only; this local-development MVP is not suitable for real member data or production.** Member passwords are hashed with Node's scrypt; session tokens are random, stored as hashes, and sent in HttpOnly, SameSite=Lax cookies. Set `NODE_ENV=production` to enable Secure cookies (HTTPS is then required). CORS is restricted to the configured origins; requests without an `Origin` header are supported for local command-line clients. The admin bootstrap credentials are environment-only. This MVP does not process payments; profile-change email is optional and requires SMTP configuration.
+## Use a hosted MySQL database
+
+To make the backend's database records available across devices, both the backend and frontend must be reachable over the internet, and the backend must connect to the same hosted MySQL database every time it starts.
+
+1. Create a MySQL database with a cloud database provider. Copy its connection details: host, port, database name, username, and password. Make sure the database accepts connections from the backend hosting provider.
+2. Deploy the `backend/` directory as a Node.js service. Set `NODE_ENV=production` and in that service's environment-variable settings, set:
+   - `MYSQL_URL` to `mysql://USER:PASSWORD@HOST:PORT/DATABASE`. URL-encode special characters in the username or password.
+   - `MYSQL_SSL=true` if the database provider requires TLS (follow that provider's connection instructions).
+   - `ADMIN_EMAIL` and `ADMIN_PASSWORD` for the first owner/admin login. Use a unique password of at least 12 characters.
+   - `CORS_ORIGINS` to the exact public frontend origin, such as `https://www.example.no` (no path or trailing slash).
+   - `PUBLIC_FRONTEND_URL` to that same public frontend URL, for membership links sent by email.
+3. Keep `MYSQL_URL` and `ADMIN_PASSWORD` only in the backend host's secret/environment settings. Do not put database credentials in frontend variables, source files, or Git.
+4. Deploy the frontend and set its build-time variable `VITE_API_BASE_URL` to the backend's public API base URL, ending in `/api`, for example `https://api.example.no/api`. Rebuild/redeploy the frontend after changing this variable. Add the frontend's exact origin to backend `CORS_ORIGINS`. Prefer frontend and API hostnames under the same site/domain so browser member-session cookies work.
+5. Restart/redeploy the backend and check `https://YOUR-BACKEND-HOST/api/health`. A successful production response contains `"status":"ok"` and `"storage":"mysql"`. Register a test membership and create a test activity, then open the frontend from another device and check that the same records appear.
+
+When `MYSQL_URL` is present, the backend creates the `set18_application_state` and `set18_uploads` tables if needed. The MySQL user must have permission to create tables on the first startup, plus permission to read and write them; alternatively, have a database administrator create both tables first. Memberships, applications, activities, orders, settings, and audit records are saved in MySQL; new activity images and membership application files are also saved in MySQL. MySQL is authoritative after its state row exists, and updates from backend instances using that database are shared. In production the backend refuses to start without `MYSQL_URL`, and `/api/health` reports `storage: "mysql"` only when it can refresh state from the database. Do not set `MYSQL_URL` to a local database if the goal is cross-device availability.
+
+On the first startup only, if the MySQL state table is empty, the backend seeds it from `DATA_DIR/application-store.json` when that file exists; otherwise it seeds the initial default data. This lets you move existing local records to MySQL. After the cloud database has been initialized, it is the source of truth; do not clear its state row to avoid re-importing the local file. Existing uploaded files in `DATA_DIR` are not copied automatically—new uploads are stored in MySQL. If you do not need old local records, ensure the deployed backend has no old `application-store.json` before its first MySQL startup. Without `MYSQL_URL`, the backend uses the local JSON store instead.
+
+Without `MYSQL_URL`, uploads are stored under `DATA_DIR`. With MySQL enabled, new activity images and membership application files are stored in the `set18_uploads` table, so they are shared across backend instances. Existing local uploads are not migrated automatically; keep `DATA_DIR` available until those files have been migrated or replaced. Do not expose `DATA_DIR` through a static file server. Membership documents are private and are only retrievable by an authenticated admin. Member and application personal information is stored unencrypted in MySQL or the local JSON file; use a provider with encryption-at-rest and appropriate access controls before storing real member data. Member passwords are hashed with Node's scrypt; session tokens are random, stored as hashes, and sent in HttpOnly, SameSite=Lax cookies. Set `NODE_ENV=production` to enable Secure cookies (HTTPS is then required). CORS is restricted to the configured origins; requests without an `Origin` header are supported for local command-line clients. The admin bootstrap credentials are environment-only. This MVP does not process payments; profile-change email is optional and requires SMTP configuration.
 
 ## API contract
 
@@ -30,6 +53,7 @@ All JSON responses use `{ "message": "..." }` for action results/errors; registr
 - `GET /api/activities/:id/orders` lists all orders and participants for an activity (admin only). Public activities include `remainingTickets` (`total` and `byType`). Activity edits cannot lower capacity or ticket quantity below sold tickets, and deleting an activity cancels its orders.
 - Memberships are valid for one year (`validUntil`, computed from `createdAt` when missing). `POST /api/membership/me/renew` extends it by one year (dummy payment) and `PATCH /api/membership/me/consents` (`{ emailOffers, smsOffers }`) updates marketing consents. Expired members can log in and renew but cannot buy tickets.
 - Admin: `GET /api/admin/members` (filters `search`, `type`, `status`, `region`, `expired`), `GET /api/admin/members/export` (CSV with the same filters) and `PATCH /api/admin/members/:id` (`status` active/suspended, `validUntil`, `localGroup`; suspending ends the member's sessions).
+- Any authenticated administrator can view, create, and remove administrator accounts from **Min side**. New administrators receive the email and temporary password entered by the creator; they should change the password after signing in. The main owner account cannot be removed.
 - `GET/POST /api/membership/orders` (member session) lists own orders or buys tickets with `{ "activityId", "ticketName", "quantity" }` (1–10). The server computes the price for the member's type including an active discount, checks per-type and total capacity atomically, and confirms immediately (dummy payment). `DELETE /api/membership/orders/:id` cancels an own upcoming order.
 - Activities have a `status` (`published`, `draft`, `archived`); only published ones are public. Admins can send `status` in create/update and list everything with `GET /api/activities?scope=all`. `DELETE /api/activities/:id` (admin) archives the activity and cancels its orders; set `status` back to `published` to restore it.
 - `GET /api/admin/audit-log` (admin) returns the latest 200 audit entries (activity create/update/archive, application review, member and admin changes, config updates).
@@ -123,4 +147,4 @@ Existing content and contact routes are preserved: `/api/health`, `/api/activiti
 
 ## Tests and storage
 
-`npm test` runs `node --test` integration tests that start the server against a temporary `DATA_DIR`. Storage is still a single JSON file with serialized, atomic writes; it is fine for one backend process. Moving to a real database (for several processes or large volumes) is a separate migration and has not been done.
+`npm test` runs `node --test` integration tests that start the server against a temporary `DATA_DIR`. Local JSON storage uses serialized, atomic writes; MySQL storage serializes writes through a database transaction.

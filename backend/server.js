@@ -10,6 +10,7 @@ import ordersRoutes from "./routes/orders.js";
 import membershipRoutes from "./routes/membership.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
+import { refreshStore } from "./lib/store.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,37 @@ const defaultOrigins = [
   "http://localhost:4173",
   "http://127.0.0.1:4173"
 ];
+
+if (process.env.NODE_ENV === "production") {
+  const requiredSettings = ["ADMIN_EMAIL", "ADMIN_PASSWORD", "CORS_ORIGINS", "PUBLIC_FRONTEND_URL"];
+  const missingSettings = requiredSettings.filter((setting) => !process.env[setting]?.trim());
+  if (missingSettings.length) {
+    throw new Error(`Disse miljøvariablene må settes i produksjon: ${missingSettings.join(", ")}`);
+  }
+  if (process.env.ADMIN_PASSWORD.length < 12) {
+    throw new Error("ADMIN_PASSWORD må være minst 12 tegn i produksjon");
+  }
+
+  const origins = process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim());
+  const validOrigins = origins.every((origin) => {
+    try {
+      const url = new URL(origin);
+      return url.protocol === "https:" && url.origin === origin;
+    } catch {
+      return false;
+    }
+  });
+  let frontendUrl;
+  try {
+    frontendUrl = new URL(process.env.PUBLIC_FRONTEND_URL);
+  } catch {
+    throw new Error("PUBLIC_FRONTEND_URL må være en gyldig HTTPS-adresse i produksjon");
+  }
+  if (!validOrigins || frontendUrl.protocol !== "https:" ||
+      !origins.includes(frontendUrl.origin)) {
+    throw new Error("CORS_ORIGINS må inneholde HTTPS-opprinnelsen til PUBLIC_FRONTEND_URL");
+  }
+}
 
 const allowedOrigins = new Set(
   (process.env.CORS_ORIGINS || defaultOrigins.join(","))
@@ -45,8 +77,22 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", service: "Østfold Husflidslag backend" });
+app.get("/api/health", async (req, res) => {
+  try {
+    await refreshStore();
+    res.json({
+      status: "ok",
+      service: "Østfold Husflidslag backend",
+      storage: process.env.MYSQL_URL ? "mysql" : "local"
+    });
+  } catch (error) {
+    console.error(`Health check failed: ${error.message}`);
+    res.status(503).json({ status: "unavailable", service: "Østfold Husflidslag backend" });
+  }
+});
+
+app.use((req, res, next) => {
+  refreshStore().then(() => next(), next);
 });
 
 app.use("/api/activities", activitiesRoutes);

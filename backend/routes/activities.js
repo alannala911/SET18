@@ -1,17 +1,14 @@
 import express from "express";
 import multer from "multer";
-import { createReadStream } from "node:fs";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { readStore, updateStore, uploadDirectory } from "../lib/store.js";
+import { deleteUpload, readStore, readUpload, saveUpload, updateStore } from "../lib/store.js";
 import { activityStatuses, confirmedOrders, isPublished, remainingTickets } from "../lib/pricing.js";
 import { recordAudit } from "../lib/audit.js";
 import { memberEmail, memberName } from "../lib/members.js";
 import { adminSession, requireAdmin } from "./auth.js";
 
 const router = express.Router();
-const imageDirectory = path.join(uploadDirectory, "activity-images");
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 }
@@ -247,9 +244,9 @@ async function saveValidatedActivityImage(uploadedFile) {
   const matchedImageSignature = supportedImageSignatures.find((signature) => signature.matches(uploadedFile.buffer));
   if (!matchedImageSignature) return { error: "Last opp et gyldig PNG-, JPEG- eller WebP-bilde" };
   const imageStorageName = `${randomUUID()}${matchedImageSignature.extension}`;
-  await mkdir(imageDirectory, { recursive: true, mode: 0o700 });
-  const imagePath = path.join(imageDirectory, imageStorageName);
-  await writeFile(imagePath, uploadedFile.buffer, { flag: "wx", mode: 0o600 });
+  const contentType = matchedImageSignature.extension === ".png" ? "image/png"
+    : matchedImageSignature.extension === ".webp" ? "image/webp" : "image/jpeg";
+  await saveUpload(path.join("activity-images", imageStorageName), uploadedFile.buffer, contentType);
   return { imageStorageName, imageUrl: `/api/activities/images/${imageStorageName}` };
 }
 
@@ -265,9 +262,7 @@ async function saveRequestImage(req, res) {
 
 async function removeActivityImage(imageStorageName) {
   if (!imageStorageName) return;
-  await unlink(path.join(imageDirectory, imageStorageName)).catch((error) => {
-    if (error.code !== "ENOENT") throw error;
-  });
+  await deleteUpload(path.join("activity-images", imageStorageName));
 }
 
 function getActivityId(req, res) {
@@ -364,7 +359,7 @@ router.put("/:id", requireAdmin, parseActivityImage, (req, res, next) => {
   if (activityId) return saveActivity(req, res, next, activityId);
 });
 
-router.get("/images/:name", (req, res, next) => {
+router.get("/images/:name", async (req, res, next) => {
   const imageFileName = req.params.name;
   if (!/^[0-9a-f-]{36}\.(?:png|jpg|webp)$/.test(imageFileName)) {
     return res.status(404).json({ message: "Bildet ble ikke funnet" });
@@ -375,11 +370,15 @@ router.get("/images/:name", (req, res, next) => {
   if (!activityWithImage) return res.status(404).json({ message: "Bildet ble ikke funnet" });
   const imageContentType = imageFileName.endsWith(".png") ? "image/png"
     : imageFileName.endsWith(".webp") ? "image/webp" : "image/jpeg";
-  res.setHeader("Content-Type", imageContentType);
-  res.setHeader("Cache-Control", "public, max-age=3600");
-  createReadStream(path.join(imageDirectory, imageFileName))
-    .on("error", next)
-    .pipe(res);
+  try {
+    const image = await readUpload(path.join("activity-images", imageFileName));
+    if (!image) return res.status(404).json({ message: "Bildet ble ikke funnet" });
+    res.setHeader("Content-Type", imageContentType);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.end(image);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get("/:id/orders", requireAdmin, (req, res) => {

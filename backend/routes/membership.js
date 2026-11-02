@@ -1,9 +1,8 @@
 import express from "express";
 import multer from "multer";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { readStore, updateStore, uploadDirectory } from "../lib/store.js";
+import { readStore, saveUpload, updateStore } from "../lib/store.js";
 import { frontendLink, mailConfigured, sendLinkMail } from "../lib/mailer.js";
 import { rateLimit } from "../lib/rateLimit.js";
 import {
@@ -1101,9 +1100,7 @@ router.post("/craft", (req, res, next) => {
     const savedFiles = [];
     for (const file of validatedFiles) {
       const fileName = `${id}-${file.id}${file.extension}`;
-      const folder = path.join(uploadDirectory, id);
-      await mkdir(folder, { recursive: true, mode: 0o700 });
-      await writeFile(path.join(folder, fileName), file.buffer, { flag: "wx", mode: 0o600 });
+      await saveUpload(path.join(id, fileName), file.buffer, file.mimeType);
       savedFiles.push({
         id: file.id,
         originalName: file.originalName,
@@ -1241,9 +1238,7 @@ router.post("/custom/:formId", (req, res, next) => {
     const savedFiles = [];
     for (const file of validatedFiles) {
       const fileName = `${id}-${file.id}${file.extension}`;
-      const folder = path.join(uploadDirectory, id);
-      await mkdir(folder, { recursive: true, mode: 0o700 });
-      await writeFile(path.join(folder, fileName), file.buffer, { flag: "wx", mode: 0o600 });
+      await saveUpload(path.join(id, fileName), file.buffer, file.mimeType);
       savedFiles.push({
         id: file.id,
         fieldId: file.fieldId,

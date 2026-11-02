@@ -181,7 +181,7 @@ export default function MyPage() {
           apiBase={sessionRole === "admin" ? "/auth" : "/membership"}
           member={sessionRole === "member" ? account : null}
           onMemberUpdated={setAccount}
-          isOwner={account.role === "owner"}
+          isAdmin={sessionRole === "admin"}
           localGroup={account.profile?.localGroup || {}}
           regions={regions}
           onLocalGroupSaved={saveLocalGroup}

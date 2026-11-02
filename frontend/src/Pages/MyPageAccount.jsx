@@ -63,7 +63,7 @@ function LocalGroupEditor({ apiBase, currentGroup, regions, onSaved }) {
   );
 }
 
-export function Account({ title, apiBase, member, isOwner, onMemberUpdated, localGroup, regions, onLocalGroupSaved, onLogout }) {
+export function Account({ title, apiBase, member, isAdmin, onMemberUpdated, localGroup, regions, onLocalGroupSaved, onLogout }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -112,11 +112,10 @@ export function Account({ title, apiBase, member, isOwner, onMemberUpdated, loca
       {member && <MembershipSettings member={member} onUpdated={onMemberUpdated} />}
       {member && <MemberOrders />}
       <ChangePassword apiBase={apiBase} />
-      {isOwner && <AdminAccounts />}
+      {isAdmin && <AdminAccounts />}
       {member && <DeleteAccount onDeleted={onLogout} />}
       <button className="membership-secondary" type="button" onClick={logout}>Logg ut</button>
       <p className="membership-note">* Obligatoriske felt: Må fylles ut</p>
     </section>
   );
 }
-

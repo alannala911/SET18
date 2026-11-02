@@ -1,9 +1,7 @@
 import express from "express";
-import { createReadStream } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { pipeline } from "node:stream";
 import path from "node:path";
-import { readStore, updateStore, uploadDirectory } from "../lib/store.js";
+import { readStore, readUpload, updateStore } from "../lib/store.js";
 import { createToken, normalizeEmail, tokenHash } from "../lib/security.js";
 import { agreementsFrom, isOfferChannel, isRecord, memberEmail, memberPhone, memberSummary, offerRecipients, phoneDigits } from "../lib/members.js";
 import { recordAudit } from "../lib/audit.js";
@@ -550,18 +548,20 @@ router.patch("/applications/:id", async (req, res, next) => {
   }
 });
 
-router.get("/applications/:id/files/:fileId", (req, res, next) => {
+router.get("/applications/:id/files/:fileId", async (req, res, next) => {
   const application = readStore().applications.find((item) => item.id === req.params.id);
   const file = application?.files?.find((item) => item.id === req.params.fileId);
   if (!file) return res.status(404).json({ message: "Filen ble ikke funnet" });
-  const filename = path.join(uploadDirectory, application.id, file.storageName);
-  res.setHeader("Content-Type", file.mimeType);
-  res.setHeader("Content-Disposition", `attachment; filename="${path.basename(file.originalName).replace(/["\\\r\n]/g, "_")}"`);
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  pipeline(createReadStream(filename), res, (error) => {
-    if (error && !res.headersSent) next(error);
-    else if (error) res.destroy(error);
-  });
+  try {
+    const content = await readUpload(path.join(application.id, file.storageName));
+    if (!content) return res.status(404).json({ message: "Filen ble ikke funnet" });
+    res.setHeader("Content-Type", file.mimeType);
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(file.originalName).replace(/["\\\r\n]/g, "_")}"`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.end(content);
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

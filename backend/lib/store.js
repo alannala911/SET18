@@ -1,6 +1,7 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import mysql from "mysql2/promise";
 import { activities as defaultActivities } from "../data/content.js";
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || "./data");
@@ -167,6 +168,47 @@ async function readInitialStore() {
   }
 }
 
+function mysqlConnectionOptions(connectionString) {
+  const url = new URL(connectionString);
+  if (url.protocol !== "mysql:") {
+    throw new Error("MYSQL_URL må bruke mysql://");
+  }
+  const database = decodeURIComponent(url.pathname.slice(1));
+  if (!url.hostname || !database) {
+    throw new Error("MYSQL_URL må inneholde vertsnavn og databasenavn");
+  }
+  return {
+    host: url.hostname,
+    port: Number(url.port) || 3306,
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database,
+    waitForConnections: true,
+    connectionLimit: 10,
+    ...(process.env.MYSQL_SSL === "true" ? { ssl: { rejectUnauthorized: true } } : {})
+  };
+}
+
+function parseDatabaseState(payload) {
+  return typeof payload === "string" ? JSON.parse(payload) : payload;
+}
+
+function localUploadPath(storageName) {
+  const filePath = path.resolve(uploadDirectory, storageName);
+  if (!filePath.startsWith(`${uploadDirectory}${path.sep}`)) {
+    throw new Error("Opplastingsbanen er ugyldig");
+  }
+  return filePath;
+}
+
+const pool = process.env.MYSQL_URL
+  ? mysql.createPool(mysqlConnectionOptions(process.env.MYSQL_URL))
+  : null;
+
+if (process.env.NODE_ENV === "production" && !pool) {
+  throw new Error("MYSQL_URL må være konfigurert i produksjon; lokal JSON-lagring er deaktivert");
+}
+
 function migrateConfig(state, defaults) {
   const storedSchemaVersion = state.config?.schemaVersion || 0;
   const migratingConfig = storedSchemaVersion < 2;
@@ -251,20 +293,138 @@ function migrateStore(state) {
 await mkdir(uploadDirectory, { recursive: true, mode: 0o700 });
 let state = migrateStore(await readInitialStore());
 
+if (pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS set18_application_state (
+      id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+      payload JSON NOT NULL,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS set18_uploads (
+      storage_name VARCHAR(255) NOT NULL PRIMARY KEY,
+      content LONGBLOB NOT NULL,
+      content_type VARCHAR(100) NOT NULL
+    )
+  `);
+  await pool.execute(
+    "INSERT IGNORE INTO set18_application_state (id, payload) VALUES (1, ?)",
+    [JSON.stringify(state)]
+  );
+  const [rows] = await pool.execute(
+    "SELECT payload FROM set18_application_state WHERE id = 1"
+  );
+  if (!rows.length) throw new Error("Kunne ikke initialisere applikasjonsdata i MySQL");
+  state = migrateStore(parseDatabaseState(rows[0].payload));
+}
+
 let pendingWrite = Promise.resolve();
+
+function enqueue(operation) {
+  const result = pendingWrite.then(operation);
+  pendingWrite = result.catch(() => {});
+  return result;
+}
 
 export function readStore() {
   return state;
 }
 
+export function refreshStore() {
+  if (!pool) return Promise.resolve(state);
+  return enqueue(async () => {
+    const [rows] = await pool.execute(
+      "SELECT payload FROM set18_application_state WHERE id = 1"
+    );
+    if (!rows.length) throw new Error("Applikasjonsdata mangler i MySQL");
+    state = migrateStore(parseDatabaseState(rows[0].payload));
+    return state;
+  });
+}
+
 export function updateStore(mutator) {
-  const operation = pendingWrite.then(async () => {
+  return enqueue(async () => {
+    if (pool) {
+      const connection = await pool.getConnection();
+      let transactionStarted = false;
+      try {
+        await connection.beginTransaction();
+        transactionStarted = true;
+        const [rows] = await connection.execute(
+          "SELECT payload FROM set18_application_state WHERE id = 1 FOR UPDATE"
+        );
+        if (!rows.length) throw new Error("Applikasjonsdata mangler i MySQL");
+        const databaseState = migrateStore(parseDatabaseState(rows[0].payload));
+        const result = await mutator(databaseState);
+        await connection.execute(
+          "UPDATE set18_application_state SET payload = ? WHERE id = 1",
+          [JSON.stringify(databaseState)]
+        );
+        await connection.commit();
+        transactionStarted = false;
+        state = databaseState;
+        return result;
+      } catch (error) {
+        if (transactionStarted) {
+          try {
+            await connection.rollback();
+          } catch (rollbackError) {
+            throw new AggregateError([error, rollbackError], "MySQL-transaksjonen og tilbakerullingen feilet");
+          }
+        }
+        throw error;
+      } finally {
+        connection.release();
+      }
+    }
+
     const result = await mutator(state);
     const nextPath = `${storePath}.next`;
     await writeFile(nextPath, JSON.stringify(state, null, 2), { mode: 0o600 });
     await rename(nextPath, storePath);
     return result;
   });
-  pendingWrite = operation.catch(() => {});
-  return operation;
+}
+
+export async function saveUpload(storageName, content, contentType) {
+  if (pool) {
+    await pool.execute(
+      `INSERT INTO set18_uploads (storage_name, content, content_type) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE content = VALUES(content), content_type = VALUES(content_type)`,
+      [storageName, content, contentType]
+    );
+    return;
+  }
+  const filePath = localUploadPath(storageName);
+  await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
+  await writeFile(filePath, content, { flag: "wx", mode: 0o600 });
+}
+
+export async function readUpload(storageName) {
+  if (pool) {
+    const [rows] = await pool.execute(
+      "SELECT content FROM set18_uploads WHERE storage_name = ?",
+      [storageName]
+    );
+    return rows.length ? rows[0].content : null;
+  }
+  try {
+    return await readFile(localUploadPath(storageName));
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+export async function deleteUpload(storageName) {
+  if (pool) {
+    await pool.execute("DELETE FROM set18_uploads WHERE storage_name = ?", [storageName]);
+    return;
+  }
+  try {
+    await unlink(localUploadPath(storageName));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
 }

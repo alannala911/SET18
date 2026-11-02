@@ -1,6 +1,6 @@
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
@@ -71,6 +71,8 @@ before(async () => {
       ...process.env,
       PORT: String(port),
       DATA_DIR: dataDirectory,
+      NODE_ENV: "test",
+      MYSQL_URL: "",
       ADMIN_EMAIL: adminLogin.email,
       ADMIN_PASSWORD: adminLogin.password
     },
@@ -89,8 +91,30 @@ after(async () => {
 });
 
 test("den offentlige aktivitetslisten fungerer med standardaktivitetene", async () => {
+  const health = await fetch(`${baseUrl}/api/health`).then((response) => response.json());
+  assert.equal(health.status, "ok");
+  assert.equal(health.storage, "local");
   const list = await fetch(`${baseUrl}/api/activities`).then((response) => response.json());
   assert.ok(Array.isArray(list) && list.length > 0);
+});
+
+test("produksjonsserveren starter ikke med lokal lagring", async () => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "set18-production-test-"));
+  try {
+    const result = spawnSync(process.execPath, ["server.js"], {
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        MYSQL_URL: "",
+        DATA_DIR: temporaryDirectory
+      },
+      encoding: "utf8"
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /MYSQL_URL må være konfigurert i produksjon/);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });
 
 describe("administrator", () => {
@@ -102,7 +126,7 @@ describe("administrator", () => {
     assert.equal(login.data.admin.role, "owner");
   });
 
-  test("hovedadministrator kan legge til og fjerne administratorer", async () => {
+  test("administratorer kan legge til og fjerne administratorer, men ikke hovedadministratoren", async () => {
     const owner = client();
     await owner("/auth/login", { method: "POST", body: adminLogin });
     const created = await owner("/auth/admins", { method: "POST", body: { email: "b@test.no", password: "AndreAdmin1234" } });
@@ -110,10 +134,27 @@ describe("administrator", () => {
 
     const second = client();
     await second("/auth/login", { method: "POST", body: { email: "b@test.no", password: "AndreAdmin1234" } });
-    assert.equal((await second("/auth/admins")).status, 403);
+    assert.equal((await second("/auth/admins")).status, 200);
+    const anotherCreated = await second("/auth/admins", {
+      method: "POST",
+      body: { email: "c@test.no", password: "TredjeAdmin1234" }
+    });
+    assert.equal(anotherCreated.status, 201);
 
+    const removableAdmin = await second("/auth/admins", {
+      method: "POST",
+      body: { email: "d@test.no", password: "FjerdeAdmin1234" }
+    });
+    assert.equal(removableAdmin.status, 201);
+    assert.equal((await second(`/auth/admins/${removableAdmin.data.id}`, { method: "DELETE" })).status, 200);
     assert.equal((await owner(`/auth/admins/${created.data.id}`, { method: "DELETE" })).status, 200);
     assert.equal((await second("/auth/me")).status, 401);
+
+    const remainingAdmin = client();
+    await remainingAdmin("/auth/login", { method: "POST", body: { email: "c@test.no", password: "TredjeAdmin1234" } });
+    const ownerRecord = (await remainingAdmin("/auth/admins")).data.find((item) => item.role === "owner");
+    assert.ok(ownerRecord);
+    assert.equal((await remainingAdmin(`/auth/admins/${ownerRecord.id}`, { method: "DELETE" })).status, 404);
   });
 });
 
@@ -143,9 +184,15 @@ describe("medlemmer og bestillinger", () => {
   });
 
   test("bestilling bruker rabatt og respekterer kapasitet", async () => {
-    const created = await admin("/activities", { method: "POST", form: activityForm() });
+    const form = activityForm();
+    const imageSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    form.set("image", new Blob([imageSignature], { type: "image/png" }), "activity.png");
+    const created = await admin("/activities", { method: "POST", form });
     assert.equal(created.status, 201);
     activityId = created.data.id;
+    const imageResponse = await fetch(`${baseUrl}${created.data.imageUrl}`);
+    assert.equal(imageResponse.status, 200);
+    assert.deepEqual(Buffer.from(await imageResponse.arrayBuffer()), imageSignature);
 
     const order = await member("/membership/orders", { method: "POST", body: { activityId, ticketName: "Voksen", quantity: 2 } });
     assert.equal(order.status, 201);
