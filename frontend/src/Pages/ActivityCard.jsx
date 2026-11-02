@@ -16,7 +16,7 @@ import {
 
 export function ActivityCard({ activityData, activityIndex = 0, ticketSales }) {
   const decoration = knownActivityDecorations[activityData.id] || {
-    emoji: "min side.png",
+    emoji: "✣",
     color: fallbackActivityColors[activityIndex % fallbackActivityColors.length],
     tagline: activityData.category || "Aktivitet",
   };
