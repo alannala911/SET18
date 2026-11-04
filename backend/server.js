@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
-
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import activitiesRoutes from "./routes/activities.js";
 import coursesRoutes from "./routes/courses.js";
 import newsRoutes from "./routes/news.js";
@@ -18,7 +19,9 @@ const defaultOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:4173",
-  "http://127.0.0.1:4173"
+  "http://127.0.0.1:4173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
 ];
 
 if (process.env.NODE_ENV === "production") {
@@ -104,6 +107,15 @@ app.use("/api/membership/orders", ordersRoutes);
 app.use("/api/membership", membershipRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+
+const frontendDist = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../frontend/dist"
+);
+app.use(express.static(frontendDist));
+app.get(/^\/(?!api\/).*/, (req, res) => {
+  res.sendFile(path.join(frontendDist, "index.html"));
+});
 
 function handleRequestError(error, req, res, next) {
   if (res.headersSent) return next(error);
