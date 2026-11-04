@@ -25,9 +25,7 @@ import "./App.css";
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
-/* =========================
-   FORSIDEN
-========================= */
+/* Dette er hovedsiden (forsiden) til nettsiden. */
 
 function HomePage() {
   return (
