@@ -7,6 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
+/* Sider */
 import Courses from "./Pages/Courses.jsx";
 import Activities from "./Pages/Activities.jsx";
 import { ActivityEditor } from "./Pages/ActivityEditor.jsx";
@@ -19,15 +20,28 @@ import Shop from "./Pages/Shop.jsx";
 import MyPage from "./Pages/MyPage.jsx";
 import MemberProfileChange from "./Pages/MemberProfileChange.jsx";
 import ResetPassword from "./Pages/ResetPassword.jsx";
-import Membership, { MembershipAdminPage } from "./Pages/Membership.jsx";
+import Membership, {
+  MembershipAdminPage,
+} from "./Pages/Membership.jsx";
+
+/* Bilder og ikoner */
+import logoIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Logo Østfold.png";
+import activitiesIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Aktiviteter.png";
+import courseIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Kurs.png";
+import newsIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Nyheter.png";
+import municipalityIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/kommuner.png";
+import contactIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/email.png";
+import searchIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/søker.png";
+import shopIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/nettbutikk.png";
+import loginIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/login.png";
+import facebookIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Facebook1.png";
+import instagramIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/instagram1.png";
 
 import "./App.css";
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
-/* =========================
-   FORSIDEN
-========================= */
+/* Dette er hovedsiden (forsiden) til nettsiden. */
 
 function HomePage() {
   return (
@@ -120,27 +134,50 @@ function App() {
 
   const refreshAuthentication = useCallback(() => {
     const sequence = ++authCheckSequence.current;
+
     Promise.all([
-      fetch(`${API}/membership/me`, { credentials: "include" }),
-      fetch(`${API}/auth/me`, { credentials: "include" }),
+      fetch(`${API}/membership/me`, {
+        credentials: "include",
+      }),
+      fetch(`${API}/auth/me`, {
+        credentials: "include",
+      }),
     ])
       .then((responses) => {
         if (sequence === authCheckSequence.current) {
-          setIsAuthenticated(responses.some((response) => response.ok));
+          setIsAuthenticated(
+            responses.some((response) => response.ok),
+          );
         }
       })
       .catch((error) => {
-        console.error("Kunne ikke kontrollere innloggingsstatus.", error);
+        console.error(
+          "Kunne ikke kontrollere innloggingsstatus.",
+          error,
+        );
       });
   }, []);
 
   useEffect(() => {
     refreshAuthentication();
-    window.addEventListener("set18-auth-change", refreshAuthentication);
+
+    window.addEventListener(
+      "set18-auth-change",
+      refreshAuthentication,
+    );
+
     window.addEventListener("focus", refreshAuthentication);
+
     return () => {
-      window.removeEventListener("set18-auth-change", refreshAuthentication);
-      window.removeEventListener("focus", refreshAuthentication);
+      window.removeEventListener(
+        "set18-auth-change",
+        refreshAuthentication,
+      );
+
+      window.removeEventListener(
+        "focus",
+        refreshAuthentication,
+      );
     };
   }, [refreshAuthentication]);
 
@@ -149,29 +186,64 @@ function App() {
       {/* Toppmeny */}
       <header className="topbar">
         <Link className="brand" to="/">
-          <span className="brand-symbol" aria-hidden="true">
-            ✣
-          </span>
-
-          <strong>
-            Østfold
-            <br />
-            Husflidslag
-          </strong>
+          <img
+            className="brand-logo"
+            src={logoIcon}
+            alt="Østfold Husflidslag"
+          />
         </Link>
 
-        <nav className="top-links" aria-label="Ekstra navigasjon">
-          <Link to="/sok">⌕ Søk</Link>
-          <Link to="/nettbutikk">🛒 Nettbutikk</Link>
-          <Link to="/medlemskap">♡ Medlemskap</Link>
-          <Link to="/min-side">♙ {isAuthenticated ? "Min side" : "Logg inn"}</Link>
+        <nav
+          className="top-links"
+          aria-label="Ekstra navigasjon"
+        >
+          <Link to="/sok">
+            <img
+              className="top-icon"
+              src={searchIcon}
+              alt=""
+            />
+            Søk
+          </Link>
+
+          <Link to="/nettbutikk">
+            <img
+              className="top-icon"
+              src={shopIcon}
+              alt=""
+            />
+            Nettbutikk
+          </Link>
+
+          <Link to="/medlemskap">
+            <span
+              className="temporary-icon"
+              aria-hidden="true"
+            >
+              ♡
+            </span>
+            Medlemskap
+          </Link>
+
+          <Link to="/min-side">
+            <img
+              className="top-icon"
+              src={loginIcon}
+              alt=""
+            />
+
+            {isAuthenticated ? "Min side" : "Logg inn"}
+          </Link>
         </nav>
       </header>
 
       {/* Sidemeny og valgt side */}
       <section className="page-layout">
         <aside className="sidebar">
-          <nav className="side-links" aria-label="Hovedmeny">
+          <nav
+            className="side-links"
+            aria-label="Hovedmeny"
+          >
             <NavLink
               to="/"
               end
@@ -179,7 +251,12 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">⌂</span>
+              <span
+                className="temporary-icon"
+                aria-hidden="true"
+              >
+                ⌂
+              </span>
               Hjem
             </NavLink>
 
@@ -189,7 +266,11 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">▣</span>
+              <img
+                className="menu-icon"
+                src={courseIcon}
+                alt=""
+              />
               Kurs
             </NavLink>
 
@@ -199,7 +280,11 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">☷</span>
+              <img
+                className="menu-icon"
+                src={activitiesIcon}
+                alt=""
+              />
               Aktiviteter
             </NavLink>
 
@@ -209,7 +294,11 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">▤</span>
+              <img
+                className="menu-icon"
+                src={newsIcon}
+                alt=""
+              />
               Nyheter
             </NavLink>
 
@@ -219,7 +308,12 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">●</span>
+              <span
+                className="temporary-icon"
+                aria-hidden="true"
+              >
+                ●
+              </span>
               Om oss
             </NavLink>
 
@@ -229,7 +323,11 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">♙</span>
+              <img
+                className="menu-icon"
+                src={municipalityIcon}
+                alt=""
+              />
               Kommuner
             </NavLink>
 
@@ -239,7 +337,11 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span aria-hidden="true">✉</span>
+              <img
+                className="menu-icon"
+                src={contactIcon}
+                alt=""
+              />
               Kontakt oss
             </NavLink>
           </nav>
@@ -247,13 +349,16 @@ function App() {
           <section className="social">
             <h2>Følg oss</h2>
 
-            <nav aria-label="Sosiale medier">
+            <nav
+              className="social-links"
+              aria-label="Sosiale medier"
+            >
               <a href="#" aria-label="Facebook">
-                f
+                <img src={facebookIcon} alt="" />
               </a>
 
               <a href="#" aria-label="Instagram">
-                ◎
+                <img src={instagramIcon} alt="" />
               </a>
             </nav>
           </section>
@@ -262,48 +367,120 @@ function App() {
         {/* Sidene og nettadressene */}
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/kurs" element={<Courses />} />
-          <Route path="/aktiviteter" element={<Activities />} />
-          <Route path="/aktiviteter/ny" element={<ActivityEditor />} />
-          <Route path="/aktiviteter/:activityId/rediger" element={<ActivityEditor />} />
-          <Route path="/nyheter" element={<News />} />
-          <Route path="/om-oss" element={<About />} />
+
+          <Route
+            path="/kurs"
+            element={<Courses />}
+          />
+
+          <Route
+            path="/aktiviteter"
+            element={<Activities />}
+          />
+
+          <Route
+            path="/aktiviteter/ny"
+            element={<ActivityEditor />}
+          />
+
+          <Route
+            path="/aktiviteter/:activityId/rediger"
+            element={<ActivityEditor />}
+          />
+
+          <Route
+            path="/nyheter"
+            element={<News />}
+          />
+
+          <Route
+            path="/om-oss"
+            element={<About />}
+          />
+
           <Route
             path="/kommuner"
             element={<Municipalities />}
           />
-          <Route path="/kontakt" element={<Contact />} />
-          <Route path="/sok" element={<Search />} />
-          <Route path="/nettbutikk" element={<Shop />} />
-          <Route path="/medlemskap" element={<Membership />} />
-          <Route path="/medlemskap/rediger" element={<MembershipAdminPage />} />
-          <Route path="/admin" element={<Navigate to="/min-side" replace />} />
-          <Route path="/min-side/endre-personopplysninger" element={<MemberProfileChange />} />
-          <Route path="/min-side/nytt-passord" element={<ResetPassword />} />
-          <Route path="/min-side" element={<MyPage />} />
+
+          <Route
+            path="/kontakt"
+            element={<Contact />}
+          />
+
+          <Route
+            path="/sok"
+            element={<Search />}
+          />
+
+          <Route
+            path="/nettbutikk"
+            element={<Shop />}
+          />
+
+          <Route
+            path="/medlemskap"
+            element={<Membership />}
+          />
+
+          <Route
+            path="/medlemskap/rediger"
+            element={<MembershipAdminPage />}
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <Navigate to="/min-side" replace />
+            }
+          />
+
+          <Route
+            path="/min-side/endre-personopplysninger"
+            element={<MemberProfileChange />}
+          />
+
+          <Route
+            path="/min-side/nytt-passord"
+            element={<ResetPassword />}
+          />
+
+          <Route
+            path="/min-side"
+            element={<MyPage />}
+          />
         </Routes>
       </section>
 
       {/* Bunntekst */}
       <footer className="footer">
         <Link className="brand" to="/">
-          <span className="brand-symbol" aria-hidden="true">
-            ✣
-          </span>
-
-          <strong>
-            Østfold
-            <br />
-            Husflidslag
-          </strong>
+          <img
+            className="footer-logo"
+            src={logoIcon}
+            alt="Østfold Husflidslag"
+          />
         </Link>
 
-        <p>Tradisjon     |     Kreativitet     |      Fellesskap</p>
+        <p>Tradisjon | Kreativitet | Fellesskap</p>
 
-        <nav aria-label="Kontakt og sosiale medier">
-          <a href="#">Facebook</a>
-          <a href="#">Instagram</a>
-          <Link to="/kontakt">Kontakt oss →</Link>
+        <nav
+          className="footer-links"
+          aria-label="Kontakt og sosiale medier"
+        >
+          <a href="#" aria-label="Facebook">
+            <img src={facebookIcon} alt="" />
+            Facebook
+          </a>
+
+          <a href="#" aria-label="Instagram">
+            <img src={instagramIcon} alt="" />
+            Instagram
+          </a>
+
+          <Link to="/kontakt">
+            Kontakt oss →
+          </Link>
         </nav>
       </footer>
     </>
