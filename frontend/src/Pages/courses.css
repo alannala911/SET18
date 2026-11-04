@@ -1,0 +1,532 @@
+
+.courses-page {
+  width: 100%;
+  min-width: 0;
+  color: #7e1414;
+  background: #fff;
+}
+
+/* Introduksjon */
+
+.courses-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 330px;
+  padding: 55px 70px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 85% 20%, #dfece5, transparent 25%),
+    radial-gradient(circle at 95% 80%, #f0ded4, transparent 30%),
+    #f8f4ec;
+}
+
+.courses-hero section {
+  max-width: 610px;
+}
+
+.courses-label {
+  margin: 0 0 10px;
+  color: #a82f4c;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.courses-hero h1 {
+  margin: 0;
+  color: #b83e3e;
+  font-size: clamp(40px, 5vw, 67px);
+  line-height: 1.05;
+}
+
+.courses-hero p:not(.courses-label) {
+  max-width: 560px;
+  margin: 22px 0 30px;
+  color: #741f1f;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.courses-hero a {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 23px;
+  border-radius: 999px;
+  color: #fff;
+  background: #b31b1b;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.courses-hero a:hover {
+  background: #721616;
+}
+
+.courses-hero-art {
+  position: relative;
+  width: 280px;
+  height: 220px;
+  flex-shrink: 0;
+}
+
+.courses-hero-art span {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 12px 30px rgba(33, 67, 56, 0.12);
+}
+
+.courses-hero-art span:nth-child(1) {
+  top: 5px;
+  right: 35px;
+  width: 150px;
+  height: 150px;
+  background: #efd4dc;
+  font-size: 70px;
+}
+
+.courses-hero-art span:nth-child(2) {
+  right: 0;
+  bottom: 0;
+  width: 95px;
+  height: 95px;
+  background: #d6e8df;
+  font-size: 42px;
+}
+
+.courses-hero-art span:nth-child(3) {
+  bottom: 10px;
+  left: 15px;
+  width: 75px;
+  height: 75px;
+  background: #f4e5b3;
+  font-size: 34px;
+}
+
+/* Kategorier */
+
+.course-categories {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  padding: 32px 45px;
+}
+
+.category-button {
+  display: flex;
+  min-height: 110px;
+  padding: 16px 10px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  color: #571212;
+  background: #f1f5f2;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.category-button:nth-child(2) {
+  background: #f0f5ef;
+}
+
+.category-button:nth-child(3) {
+  background: #faf2e5;
+}
+
+.category-button:nth-child(4) {
+  background: #f8eae7;
+}
+
+.category-button:nth-child(5) {
+  background: #e9f2f7;
+}
+
+.category-button:nth-child(6) {
+  background: #f2edf7;
+}
+
+.category-button span {
+  font-size: 34px;
+}
+
+.category-button:hover,
+.category-button.selected {
+  border-color: #245c49;
+  transform: translateY(-2px);
+}
+
+/* Søk og filtrering */
+
+.course-filter {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 22px;
+  margin: 0 45px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #f5f5f1;
+}
+
+.course-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 17px;
+  border: 1px solid #d4ddd8;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.course-search svg {
+  width: 22px;
+  height: 22px;
+}
+
+.course-search input {
+  width: 100%;
+  padding: 15px 0;
+  border: 0;
+  outline: 0;
+  color: #173f35;
+  background: transparent;
+  font: inherit;
+}
+
+.course-select {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.course-select select {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #d4ddd8;
+  border-radius: 11px;
+  color: #173f35;
+  background: #fff;
+  font: inherit;
+}
+
+/* Kurskort */
+
+.course-results {
+  padding: 45px;
+}
+
+.course-results > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.course-results h2 {
+  margin: 0;
+  color: #173f35;
+  font-size: 38px;
+}
+
+.course-results > header > span {
+  padding: 9px 16px;
+  border: 1px solid #bdd0c8;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 26px;
+}
+
+.course-card {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #d7e0dc;
+  border-radius: 16px;
+  flex-direction: column;
+  background: #fff;
+  box-shadow: 0 8px 25px rgba(32, 62, 52, 0.08);
+}
+
+.course-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(32, 62, 52, 0.14);
+}
+
+.course-image {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+}
+
+.course-image span {
+  font-size: 75px;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.12));
+}
+
+.course-image.basket {
+  background: #eee1ca;
+}
+
+.course-image.wool {
+  background: #ecdce2;
+}
+
+.course-image.sewing {
+  background: #e3ece7;
+}
+
+.course-image.embroidery {
+  background: #eee1d5;
+}
+
+.course-image.knitting {
+  background: #dfe8e4;
+}
+
+.course-image.christmas {
+  background: #e4ece0;
+}
+
+.course-card-content {
+  display: flex;
+  height: 100%;
+  padding: 23px;
+  flex-direction: column;
+}
+
+.course-category {
+  width: fit-content;
+  margin: 0 0 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #245c49;
+  background: #d7ebdf;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.course-card h3 {
+  margin: 0 0 10px;
+  color: #173f35;
+  font-size: 23px;
+}
+
+.course-description {
+  margin: 0;
+  color: #5c6c67;
+  line-height: 1.55;
+}
+
+.course-card ul {
+  display: grid;
+  margin: 20px 0;
+  padding: 0;
+  gap: 10px;
+  list-style: none;
+}
+
+.course-card li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #4f625c;
+}
+
+.course-card li svg {
+  width: 18px;
+  height: 18px;
+  color: #245c49;
+  flex-shrink: 0;
+}
+
+.course-card button {
+  display: flex;
+  width: 100%;
+  margin-top: auto;
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  background: #245c49;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.course-card button:hover {
+  background: #173f35;
+}
+
+.no-courses {
+  padding: 40px;
+  border-radius: 14px;
+  text-align: center;
+  background: #f5f5f1;
+}
+
+/* Mobil og nettbrett */
+
+@media (max-width: 1100px) {
+  .course-categories {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .course-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 750px) {
+  .courses-hero {
+    padding: 45px 25px;
+  }
+
+  .courses-hero-art {
+    display: none;
+  }
+
+  .course-categories {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 25px 20px;
+  }
+
+  .course-filter {
+    grid-template-columns: 1fr;
+    margin: 0 20px;
+  }
+
+  .course-select {
+    grid-template-columns: 1fr;
+  }
+
+  .course-results {
+    padding: 35px 20px;
+  }
+
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .course-results h2 {
+    font-size: 31px;
+  }
+}
+
+/* Rød profilfarge på kurssiden */
+
+.courses-hero {
+  background:
+    radial-gradient(circle at 85% 20%, #f4dce3, transparent 25%),
+    radial-gradient(circle at 95% 80%, #f0ded4, transparent 30%),
+    #f8f4ec;
+}
+
+.courses-hero h1,
+.course-results h2,
+.course-card h3 {
+  color: #852b3b;
+}
+
+.courses-hero a,
+.course-card button {
+  background: #b52d4d;
+}
+
+.courses-hero a:hover,
+.course-card button:hover {
+  background: #852b3b;
+}
+
+.category-button:hover,
+.category-button.selected {
+  color: #852b3b;
+  border-color: #b52d4d;
+}
+
+.course-category {
+  color: #852b3b;
+  background: #f6dfe5;
+}
+
+.course-card li svg,
+.course-search svg {
+  color: #b52d4d;
+}
+
+.course-results > header > span {
+  color: #852b3b;
+  border-color: #dfabb9;
+}
+
+.course-image.knitting,
+.course-image.christmas {
+  background: #f2dfe4;
+}
+
+.courses-page {
+  border: 20px solid red !important;
+}
+/* Tvinger fram rød profilfarge */
+
+.courses-page .courses-hero {
+  background:
+    radial-gradient(circle at 85% 20%, #f4dce3, transparent 25%),
+    radial-gradient(circle at 95% 80%, #f0ded4, transparent 30%),
+    #f8f4ec !important;
+}
+
+.courses-page .courses-hero h1,
+.courses-page .course-results h2,
+.courses-page .course-card h3 {
+  color: #852b3b !important;
+}
+
+.courses-page .courses-hero a,
+.courses-page .course-card button {
+  color: white !important;
+  background: #b52d4d !important;
+}
+
+.courses-page .courses-hero a:hover,
+.courses-page .course-card button:hover {
+  background: #852b3b !important;
+}
+
+.courses-page .category-button:hover,
+.courses-page .category-button.selected {
+  color: #852b3b !important;
+  border-color: #b52d4d !important;
+}
+
+.courses-page .course-category {
+  color: #852b3b !important;
+  background: #f6dfe5 !important;
+}
+
+.courses-page .course-card li svg,
+.courses-page .course-search svg {
+  color: #b52d4d !important;
+}
+
+.courses-page .course-results > header > span {
+  color: #852b3b !important;
+  border-color: #dfabb9 !important;
+}

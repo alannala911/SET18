@@ -514,3 +514,9 @@ body {
   height: 32px;
   object-fit: contain;
 }
+.navigation-icon {
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+  color: currentColor;
+}

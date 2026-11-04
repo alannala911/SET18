@@ -7,7 +7,10 @@ import {
   Navigate,
 } from "react-router-dom";
 
+
+
 /* Sider */
+import { FiHome, FiHeart, FiUser } from "react-icons/fi";
 import Courses from "./Pages/Courses.jsx";
 import Activities from "./Pages/Activities.jsx";
 import { ActivityEditor } from "./Pages/ActivityEditor.jsx";
@@ -33,7 +36,6 @@ import municipalityIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/kom
 import contactIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/email.png";
 import searchIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/søker.png";
 import shopIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/nettbutikk.png";
-import loginIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/login.png";
 import facebookIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Facebook1.png";
 import instagramIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/instagram1.png";
 
@@ -218,24 +220,14 @@ function App() {
           </Link>
 
           <Link to="/medlemskap">
-            <span
-              className="temporary-icon"
-              aria-hidden="true"
-            >
-              ♡
-            </span>
-            Medlemskap
-          </Link>
+  <FiHeart className="navigation-icon" aria-hidden="true" />
+  Medlemskap
+</Link>
 
-          <Link to="/min-side">
-            <img
-              className="top-icon"
-              src={loginIcon}
-              alt=""
-            />
-
-            {isAuthenticated ? "Min side" : "Logg inn"}
-          </Link>
+<Link to="/min-side">
+  <FiUser className="navigation-icon" aria-hidden="true" />
+  {isAuthenticated ? "Min side" : "Logg inn"}
+</Link>
         </nav>
       </header>
 
@@ -253,12 +245,7 @@ function App() {
                 isActive ? "active" : ""
               }
             >
-              <span
-                className="temporary-icon"
-                aria-hidden="true"
-              >
-                ⌂
-              </span>
+              <FiHome className="navigation-icon" aria-hidden="true" />
               Hjem
             </NavLink>
 
