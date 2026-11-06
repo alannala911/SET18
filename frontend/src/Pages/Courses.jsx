@@ -1,4 +1,5 @@
 
+import "./CoursePage.css";
 
 import { useState } from "react";
 import {
@@ -9,8 +10,6 @@ import {
   FiSearch,
   FiTag,
 } from "react-icons/fi";
-
-import "./CoursePage.css";
 
 const courses = [
   {
@@ -292,50 +291,4 @@ export default function Courses() {
       </section>
     </main>
   );
-}
-
-/* Svart tekst */
-
-.courses-page,
-.courses-hero h1,
-.courses-hero p:not(.courses-label),
-.category-button,
-.course-results h2,
-.course-card h3,
-.course-description,
-.course-card li,
-.course-search input,
-.course-select select {
-  color: #1f1f1f;
-}
-
-/* Røde knapper */
-
-.courses-hero a,
-.course-card button {
-  color: white;
-  background: #b52d4d;
-}
-
-.courses-hero a:hover,
-.course-card button:hover {
-  background: #852b3b;
-}
-
-/* Røde detaljer */
-
-.category-button:hover,
-.category-button.selected {
-  color: #1f1f1f;
-  border-color: #b52d4d;
-}
-
-.course-category {
-  color: #852b3b;
-  background: #f6dfe5;
-}
-
-.course-card li svg,
-.course-search svg {
-  color: #b52d4d;
 }
