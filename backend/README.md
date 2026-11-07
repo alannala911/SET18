@@ -139,6 +139,8 @@ All JSON responses use `{ "message": "..." }` for action results/errors; registr
 
 Existing content and contact routes are preserved: `/api/health`, `/api/activities`, `/api/courses`, `/api/news`, `/api/municipalities`, and `/api/contact`.
 
+Course content is stored with the application data. `GET /api/courses` and `GET /api/courses/:id` return published courses publicly. Administrators can use `GET /api/courses?scope=all` to include drafts and archived courses, `POST /api/courses` to create one, `PUT /api/courses/:id` to edit one, and `DELETE /api/courses/:id` to archive one. Write routes require the admin cookie. Course bodies contain `title`, `category`, `description`, `date` (`YYYY-MM-DD`), `time`, `place`, `price`, `symbol`, `color` (`basket`, `wool`, `sewing`, `embroidery`, `knitting`, or `christmas`), and `status` (`published`, `draft`, or `archived`).
+
 ### Member self-service
 
 - `POST /api/membership/profile/change-request` requires a member session and emails a single-use profile-edit link to the member's current registered email. Links expire after 30 minutes. Requests are limited to one per minute per member. SMTP must be configured.

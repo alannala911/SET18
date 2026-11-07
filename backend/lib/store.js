@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import mysql from "mysql2/promise";
-import { activities as defaultActivities } from "../data/content.js";
+import { activities as defaultActivities, courses as defaultCourses } from "../data/content.js";
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || "./data");
 export const uploadDirectory = path.join(dataDirectory, "uploads");
@@ -142,6 +142,7 @@ const createInitialState = () => ({
   applications: [],
   sessions: [],
   activities: structuredClone(defaultActivities),
+  courses: structuredClone(defaultCourses),
   config: {
     schemaVersion: 3,
     membershipTypes: { regular: true, minor: true, gift: true, craft: true },
@@ -272,6 +273,10 @@ function migrateStore(state) {
   if (state.activities === undefined) state.activities = structuredClone(defaultActivities);
   if (!Array.isArray(state.activities)) {
     throw new Error("Aktivitetene i søknadsdatabasen har et ugyldig format");
+  }
+  if (state.courses === undefined) state.courses = structuredClone(defaultCourses);
+  if (!Array.isArray(state.courses)) {
+    throw new Error("Kursene i søknadsdatabasen har et ugyldig format");
   }
 
   const defaults = createInitialState().config;

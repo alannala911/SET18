@@ -258,3 +258,50 @@ describe("medlemmer og bestillinger", () => {
     }
   });
 });
+
+describe("kurs", () => {
+  const courseDraft = {
+    title: "Testkurs i veving",
+    category: "Veving",
+    description: "Et kurs for å teste administrering av kurs.",
+    date: "2099-03-15",
+    time: "17:00–20:00",
+    place: "Moss",
+    price: "400 kr",
+    symbol: "🧵",
+    color: "wool",
+    status: "draft"
+  };
+
+  test("administratorer kan opprette, forhåndspublisere, redigere og arkivere kurs", async () => {
+    const admin = client();
+    const visitor = client();
+    assert.equal((await admin("/courses", { method: "POST", body: courseDraft })).status, 401);
+    await admin("/auth/login", { method: "POST", body: adminLogin });
+
+    const created = await admin("/courses", { method: "POST", body: courseDraft });
+    assert.equal(created.status, 201);
+    const courseId = created.data.id;
+    assert.equal(created.data.status, "draft");
+    assert.equal((await visitor("/courses")).data.some((course) => course.id === courseId), false);
+    assert.equal((await admin("/courses?scope=all")).data.some((course) => course.id === courseId), true);
+    assert.equal((await visitor(`/courses/${courseId}`)).status, 404);
+
+    const invalidUpdate = await admin(`/courses/${courseId}`, {
+      method: "PUT",
+      body: { ...courseDraft, date: "2099-02-31" }
+    });
+    assert.equal(invalidUpdate.status, 400);
+
+    const updated = await admin(`/courses/${courseId}`, {
+      method: "PUT",
+      body: { ...courseDraft, title: "Oppdatert testkurs", status: "published" }
+    });
+    assert.equal(updated.status, 200);
+    assert.equal((await visitor(`/courses/${courseId}`)).data.title, "Oppdatert testkurs");
+
+    assert.equal((await admin(`/courses/${courseId}`, { method: "DELETE" })).status, 200);
+    assert.equal((await visitor("/courses")).data.some((course) => course.id === courseId), false);
+    assert.equal((await admin("/courses?scope=all")).data.find((course) => course.id === courseId).status, "archived");
+  });
+});

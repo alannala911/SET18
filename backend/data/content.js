@@ -37,30 +37,81 @@ export const activities = [
 export const courses = [
   {
     id: 1,
-    title: "Sy og reparer klær",
-    description: "Lær praktiske teknikker for å reparere og tilpasse klær.",
-    level: "Nybegynner",
-    startDate: "2026-11-15",
-    duration: "6 uker",
-    location: "Moss"
+    title: "Fletting av kurv i pil",
+    category: "Fletting",
+    description: "Lær å flette en enkel kurv i pil. Kurset passer for både nybegynnere og litt øvede.",
+    date: "2026-11-12",
+    time: "17:00–21:00",
+    place: "Borge ungdomsskole, Sarpsborg",
+    price: "650 kr",
+    symbol: "🧺",
+    color: "basket",
+    status: "published"
   },
   {
     id: 2,
-    title: "Introduksjon til håndarbeid",
-    description: "Bygg trygghet i grunnleggende håndverksferdigheter.",
-    level: "Alle",
-    startDate: "2026-11-20",
-    duration: "4 uker",
-    location: "Sarpsborg"
+    title: "Toving – sitteunderlag",
+    category: "Toving",
+    description: "Vi lager sitteunderlag i ull og lærer grunnleggende toveteknikker.",
+    date: "2027-01-08",
+    time: "17:00–21:00",
+    place: "Moss kulturskole",
+    price: "550 kr",
+    symbol: "🧶",
+    color: "wool",
+    status: "published"
   },
   {
     id: 3,
-    title: "Tekstilkunst og design",
-    description: "Utforsk kreative uttrykk i tekstiler og farger.",
-    level: "Videregående",
-    startDate: "2026-12-01",
-    duration: "8 uker",
-    location: "Fredrikstad"
+    title: "Sy et enkelt skjørt",
+    category: "Søm",
+    description: "Lær grunnleggende søm og tilpasning. Kurset passer for nybegynnere.",
+    date: "2027-01-15",
+    time: "10:00–15:00",
+    place: "Råde husflidssenter",
+    price: "750 kr",
+    symbol: "🪡",
+    color: "sewing",
+    status: "published"
+  },
+  {
+    id: 4,
+    title: "Brodering – fra grunnteknikk til motiv",
+    category: "Broderi",
+    description: "Lær grunnteknikker og lag ditt eget motiv. Passer for nybegynnere og litt øvede.",
+    date: "2027-02-05",
+    time: "17:00–20:00",
+    place: "Moss kulturskole",
+    price: "600 kr",
+    symbol: "🌸",
+    color: "embroidery",
+    status: "published"
+  },
+  {
+    id: 5,
+    title: "Strikk votter med tradisjonelle mønstre",
+    category: "Strikking",
+    description: "Lær å strikke votter med klassiske mønstre. Alle nivåer er velkomne.",
+    date: "2027-02-12",
+    time: "17:00–21:00",
+    place: "Sarpsborg læringssenter",
+    price: "650 kr",
+    symbol: "🧤",
+    color: "knitting",
+    status: "published"
+  },
+  {
+    id: 6,
+    title: "Lag din egen nisse",
+    category: "Toving",
+    description: "Vi tover nisser og julepynt. En hyggelig førjulsaktivitet for alle.",
+    date: "2026-11-28",
+    time: "17:00–20:00",
+    place: "Moss kulturskole",
+    price: "500 kr",
+    symbol: "🎄",
+    color: "christmas",
+    status: "published"
   }
 ];
 
