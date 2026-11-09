@@ -8,7 +8,7 @@ export const activities = [
     time: "12:00-14:00",
     location: "Fredrikstad",
     category: "Sosialt treff",
-    imageUrl: "/images/activity-1.jpg"
+    imageUrl: "/images/activity-1.jpg",
   },
   {
     id: 2,
@@ -19,7 +19,7 @@ export const activities = [
     time: "17:30-19:30",
     location: "Moss",
     category: "Åpent verksted",
-    imageUrl: "/images/activity-2.jpg"
+    imageUrl: "/images/activity-2.jpg",
   },
   {
     id: 3,
@@ -30,8 +30,8 @@ export const activities = [
     time: "11:00-14:00",
     location: "Halden",
     category: "Familieaktivitet",
-    imageUrl: "/images/activity-3.jpg"
-  }
+    imageUrl: "/images/activity-3.jpg",
+  },
 ];
 
 export const courses = [
@@ -39,80 +39,86 @@ export const courses = [
     id: 1,
     title: "Fletting av kurv i pil",
     category: "Fletting",
-    description: "Lær å flette en enkel kurv i pil. Kurset passer for både nybegynnere og litt øvede.",
+    description:
+      "Lær å flette en enkel kurv i pil. Kurset passer for både nybegynnere og litt øvede.",
     date: "2026-11-12",
     time: "17:00–21:00",
     place: "Borge ungdomsskole, Sarpsborg",
     price: "650 kr",
     symbol: "🧺",
     color: "basket",
-    status: "published"
+    status: "published",
   },
   {
     id: 2,
     title: "Toving – sitteunderlag",
     category: "Toving",
-    description: "Vi lager sitteunderlag i ull og lærer grunnleggende toveteknikker.",
+    description:
+      "Vi lager sitteunderlag i ull og lærer grunnleggende toveteknikker.",
     date: "2027-01-08",
     time: "17:00–21:00",
     place: "Moss kulturskole",
     price: "550 kr",
     symbol: "🧶",
     color: "wool",
-    status: "published"
+    status: "published",
   },
   {
     id: 3,
     title: "Sy et enkelt skjørt",
     category: "Søm",
-    description: "Lær grunnleggende søm og tilpasning. Kurset passer for nybegynnere.",
+    description:
+      "Lær grunnleggende søm og tilpasning. Kurset passer for nybegynnere.",
     date: "2027-01-15",
     time: "10:00–15:00",
     place: "Råde husflidssenter",
     price: "750 kr",
     symbol: "🪡",
     color: "sewing",
-    status: "published"
+    status: "published",
   },
   {
     id: 4,
     title: "Brodering – fra grunnteknikk til motiv",
     category: "Broderi",
-    description: "Lær grunnteknikker og lag ditt eget motiv. Passer for nybegynnere og litt øvede.",
+    description:
+      "Lær grunnteknikker og lag ditt eget motiv. Passer for nybegynnere og litt øvede.",
     date: "2027-02-05",
     time: "17:00–20:00",
     place: "Moss kulturskole",
     price: "600 kr",
     symbol: "🌸",
     color: "embroidery",
-    status: "published"
+    status: "published",
   },
   {
     id: 5,
     title: "Strikk votter med tradisjonelle mønstre",
     category: "Strikking",
-    description: "Lær å strikke votter med klassiske mønstre. Alle nivåer er velkomne.",
+    description:
+      "Lær å strikke votter med klassiske mønstre. Alle nivåer er velkomne.",
     date: "2027-02-12",
     time: "17:00–21:00",
     place: "Sarpsborg læringssenter",
     price: "650 kr",
     symbol: "🧤",
     color: "knitting",
-    status: "published"
+    status: "published",
   },
   {
     id: 6,
     title: "Lag din egen nisse",
     category: "Toving",
-    description: "Vi tover nisser og julepynt. En hyggelig førjulsaktivitet for alle.",
+    description:
+      "Vi tover nisser og julepynt. En hyggelig førjulsaktivitet for alle.",
     date: "2026-11-28",
     time: "17:00–20:00",
     place: "Moss kulturskole",
     price: "500 kr",
     symbol: "🎄",
     color: "christmas",
-    status: "published"
-  }
+    status: "published",
+  },
 ];
 
 export const news = [
@@ -120,29 +126,26 @@ export const news = [
     id: 1,
     title: "Ny sesong for kurs og aktiviteter",
     excerpt: "Vi har fått en ny og spennende programplan for høsten.",
-    body:
-      "Østfold Husflidslag lanserer en ny sesong med flere aktiviteter, faglige kurs og lokallagsmøter. Vi ser frem til et kreativt høstsemester med fokus på fellesskap og læring.",
+    body: "Østfold Husflidslag lanserer en ny sesong med flere aktiviteter, faglige kurs og lokallagsmøter. Vi ser frem til et kreativt høstsemester med fokus på fellesskap og læring.",
     publishedAt: "2026-10-15",
-    imageUrl: "/images/news-1.jpg"
+    imageUrl: "/images/news-1.jpg",
   },
   {
     id: 2,
     title: "Samarbeid med lokallag i Østfold",
     excerpt: "Flere lokallag vil tilby åpne verksteder og sosiale treff.",
-    body:
-      "Husflidslaget samarbeider med lokale lag om flere arrangementer som skaper rom for møtes, lære og dele erfaringer.",
+    body: "Husflidslaget samarbeider med lokale lag om flere arrangementer som skaper rom for møtes, lære og dele erfaringer.",
     publishedAt: "2026-10-12",
-    imageUrl: "/images/news-2.jpg"
+    imageUrl: "/images/news-2.jpg",
   },
   {
     id: 3,
     title: "Kunst og hverdagsreparasjon i fokus",
     excerpt: "Et nytt tema som kombinerer kreativitet og praktisk kunnskap.",
-    body:
-      "Det nye temaet for høsten setter fokus på reparasjon som både praktisk og kreativ, med økt interesse for bærekraft og gjenbruk.",
+    body: "Det nye temaet for høsten setter fokus på reparasjon som både praktisk og kreativ, med økt interesse for bærekraft og gjenbruk.",
     publishedAt: "2026-10-10",
-    imageUrl: "/images/news-3.jpg"
-  }
+    imageUrl: "/images/news-3.jpg",
+  },
 ];
 
 export const municipalities = [
@@ -151,20 +154,21 @@ export const municipalities = [
     name: "Fredrikstad",
     region: "Østfold",
     description: "Lokallag med fokus på sosiale treff og kreative workshops.",
-    contactEmail: "fredrikstad@husflidslag.no"
+    contactEmail: "fredrikstad@husflidslag.no",
   },
   {
     id: 2,
     name: "Moss",
     region: "Østfold",
-    description: "Ekstremt aktive arrangementer og praktiske kurs for alle aldre.",
-    contactEmail: "moss@husflidslag.no"
+    description:
+      "Ekstremt aktive arrangementer og praktiske kurs for alle aldre.",
+    contactEmail: "moss@husflidslag.no",
   },
   {
     id: 3,
     name: "Sarpsborg",
     region: "Østfold",
     description: "Fokus på fellesskap, håndverk og regional kultur.",
-    contactEmail: "sarpsborg@husflidslag.no"
-  }
+    contactEmail: "sarpsborg@husflidslag.no",
+  },
 ];

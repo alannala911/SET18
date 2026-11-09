@@ -2,7 +2,10 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import mysql from "mysql2/promise";
-import { activities as defaultActivities, courses as defaultCourses } from "../data/content.js";
+import {
+  activities as defaultActivities,
+  courses as defaultCourses,
+} from "../data/content.js";
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || "./data");
 export const uploadDirectory = path.join(dataDirectory, "uploads");
@@ -21,7 +24,7 @@ const fieldDefinitions = {
     ["address.postalCode", "Postnummer", true],
     ["address.city", "Poststed", true],
     ["localGroup.region", "Region", true],
-    ["localGroup.chapter", "Lokallag", true]
+    ["localGroup.chapter", "Lokallag", true],
   ],
   minor: [
     ["child.firstName", "Barnets fornavn", true],
@@ -42,7 +45,7 @@ const fieldDefinitions = {
     ["address.city", "Poststed", true],
     ["localGroup.region", "Region", true],
     ["localGroup.chapter", "Lokallag", true],
-    ["consent", "Samtykke fra foresatt", true]
+    ["consent", "Samtykke fra foresatt", true],
   ],
   gift: [
     ["purchaser.birthDate", "Kjøperens fødselsdato", true],
@@ -66,14 +69,18 @@ const fieldDefinitions = {
     ["recipient.address.postalCode", "Mottakerens postnummer", true],
     ["recipient.address.city", "Mottakerens poststed", true],
     ["guardian.firstName", "Foresattens fornavn (mindreårig mottaker)", false],
-    ["guardian.middleName", "Foresattens mellomnavn (mindreårig mottaker)", false],
+    [
+      "guardian.middleName",
+      "Foresattens mellomnavn (mindreårig mottaker)",
+      false,
+    ],
     ["guardian.lastName", "Foresattens etternavn (mindreårig mottaker)", false],
     ["guardian.gender", "Foresattens kjønn (mindreårig mottaker)", false],
     ["guardian.email", "Foresattens e-post (mindreårig mottaker)", false],
     ["guardian.phone", "Foresattens telefon (mindreårig mottaker)", false],
     ["consent", "Samtykke fra foresatt (mindreårig mottaker)", false],
     ["localGroup.region", "Region for mottaker", false],
-    ["localGroup.chapter", "Lokallag for mottaker", false]
+    ["localGroup.chapter", "Lokallag for mottaker", false],
   ],
   craft: [
     ["business.name", "Bedriftsnavn", true],
@@ -110,30 +117,37 @@ const fieldDefinitions = {
     ["jury.photographs", "Vedlagte fotografier viser", false],
     ["localGroup.region", "Region for husflidslag", false],
     ["localGroup.chapter", "Lokallag for husflidslag", false],
-    ["criteriaAccepted", "Bekreft medlemskriterier", true]
-  ]
+    ["criteriaAccepted", "Bekreft medlemskriterier", true],
+  ],
 };
 
 function defaultFields() {
-  return Object.fromEntries(Object.entries(fieldDefinitions).map(([flow, definitions]) => [
-    flow,
-    Object.fromEntries(definitions.map(([key, label, required]) => [
-      key,
-      { visible: true, required, label }
-    ]))
-  ]));
+  return Object.fromEntries(
+    Object.entries(fieldDefinitions).map(([flow, definitions]) => [
+      flow,
+      Object.fromEntries(
+        definitions.map(([key, label, required]) => [
+          key,
+          { visible: true, required, label },
+        ]),
+      ),
+    ]),
+  );
 }
 
 function defaultOptions() {
   return {
     regular: { "person.gender": ["Mann", "Kvinne", "Annet"] },
-    minor: { "child.gender": ["Mann", "Kvinne", "Annet"], "parent.gender": ["Mann", "Kvinne", "Annet"] },
+    minor: {
+      "child.gender": ["Mann", "Kvinne", "Annet"],
+      "parent.gender": ["Mann", "Kvinne", "Annet"],
+    },
     gift: {
       "purchaser.gender": ["Mann", "Kvinne", "Annet"],
       "recipient.gender": ["Mann", "Kvinne", "Annet"],
-      "guardian.gender": ["Mann", "Kvinne", "Annet"]
+      "guardian.gender": ["Mann", "Kvinne", "Annet"],
     },
-    craft: { "applicant.gender": ["Mann", "Kvinne", "Annet"] }
+    craft: { "applicant.gender": ["Mann", "Kvinne", "Annet"] },
   };
 }
 
@@ -146,18 +160,25 @@ const createInitialState = () => ({
   config: {
     schemaVersion: 3,
     membershipTypes: { regular: true, minor: true, gift: true, craft: true },
-    regions: [{ name: "Østfold", chapters: ["Fredrikstad", "Moss", "Sarpsborg"] }],
+    regions: [
+      { name: "Østfold", chapters: ["Fredrikstad", "Moss", "Sarpsborg"] },
+    ],
     addressLookupAvailable: false,
     fields: defaultFields(),
     sections: { regular: {}, minor: {}, gift: {}, craft: {} },
     additionalFields: { regular: [], minor: [], gift: [], craft: [] },
     customForms: [],
-    requiredFields: Object.fromEntries(Object.entries(defaultFields()).map(([flow, fields]) => [
-      flow, Object.entries(fields).filter(([, value]) => value.required).map(([key]) => key)
-    ])),
+    requiredFields: Object.fromEntries(
+      Object.entries(defaultFields()).map(([flow, fields]) => [
+        flow,
+        Object.entries(fields)
+          .filter(([, value]) => value.required)
+          .map(([key]) => key),
+      ]),
+    ),
     options: defaultOptions(),
-    craftShippingInstructions: ""
-  }
+    craftShippingInstructions: "",
+  },
 });
 
 async function readInitialStore() {
@@ -186,7 +207,9 @@ function mysqlConnectionOptions(connectionString) {
     database,
     waitForConnections: true,
     connectionLimit: 10,
-    ...(process.env.MYSQL_SSL === "true" ? { ssl: { rejectUnauthorized: true } } : {})
+    ...(process.env.MYSQL_SSL === "true"
+      ? { ssl: { rejectUnauthorized: true } }
+      : {}),
   };
 }
 
@@ -207,7 +230,9 @@ const pool = process.env.MYSQL_URL
   : null;
 
 if (process.env.NODE_ENV === "production" && !pool) {
-  throw new Error("MYSQL_URL må være konfigurert i produksjon; lokal JSON-lagring er deaktivert");
+  throw new Error(
+    "MYSQL_URL må være konfigurert i produksjon; lokal JSON-lagring er deaktivert",
+  );
 }
 
 function migrateConfig(state, defaults) {
@@ -215,48 +240,61 @@ function migrateConfig(state, defaults) {
   const migratingConfig = storedSchemaVersion < 2;
   state.config = { ...defaults, ...(state.config || {}) };
 
-  const hasExistingPersonFields = Object.keys(state.config.fields || {}).some((flow) =>
-    state.config.fields[flow]?.["person.firstName"]
+  const hasExistingPersonFields = Object.keys(state.config.fields || {}).some(
+    (flow) => state.config.fields[flow]?.["person.firstName"],
   );
   if (migratingConfig && (!state.config.fields || !hasExistingPersonFields)) {
     state.config.fields = defaults.fields;
     state.config.requiredFields = defaults.requiredFields;
   }
 
-  state.config.fields = Object.fromEntries(Object.keys(defaults.fields).map((flow) => [
-    flow,
-    { ...defaults.fields[flow], ...(state.config.fields?.[flow] || {}) }
-  ]));
+  state.config.fields = Object.fromEntries(
+    Object.keys(defaults.fields).map((flow) => [
+      flow,
+      { ...defaults.fields[flow], ...(state.config.fields?.[flow] || {}) },
+    ]),
+  );
   state.config.fields.minor["child.email"] = {
     ...state.config.fields.minor["child.email"],
-    required: true
+    required: true,
   };
   state.config.fields.minor["child.phone"] = {
     ...state.config.fields.minor["child.phone"],
-    required: true
+    required: true,
   };
   delete state.config.fields.minor.password;
   delete state.config.fields.minor.confirmPassword;
 
   const requiredFields = state.config.requiredFields || defaults.requiredFields;
-  state.config.requiredFields = Object.fromEntries(Object.entries(requiredFields).map(([flow, fields]) => [
-    flow,
-    flow === "minor"
-      ? [...new Set([
-        ...fields.filter((field) => !["password", "confirmPassword"].includes(field)),
-        "child.email",
-        "child.phone"
-      ])]
-      : fields
-  ]));
+  state.config.requiredFields = Object.fromEntries(
+    Object.entries(requiredFields).map(([flow, fields]) => [
+      flow,
+      flow === "minor"
+        ? [
+            ...new Set([
+              ...fields.filter(
+                (field) => !["password", "confirmPassword"].includes(field),
+              ),
+              "child.email",
+              "child.phone",
+            ]),
+          ]
+        : fields,
+    ]),
+  );
 
-  if (migratingConfig && (!Array.isArray(state.config.regions) || state.config.regions.length === 0)) {
+  if (
+    migratingConfig &&
+    (!Array.isArray(state.config.regions) || state.config.regions.length === 0)
+  ) {
     state.config.regions = defaults.regions;
   }
-  state.config.options = Object.fromEntries(Object.keys(defaults.options).map((flow) => [
-    flow,
-    { ...defaults.options[flow], ...(state.config.options?.[flow] || {}) }
-  ]));
+  state.config.options = Object.fromEntries(
+    Object.keys(defaults.options).map((flow) => [
+      flow,
+      { ...defaults.options[flow], ...(state.config.options?.[flow] || {}) },
+    ]),
+  );
   state.config.additionalFields ??= defaults.additionalFields;
   state.config.sections ??= defaults.sections;
   state.config.customForms ??= defaults.customForms;
@@ -266,15 +304,22 @@ function migrateConfig(state, defaults) {
 }
 
 function migrateStore(state) {
-  if (!state || typeof state !== "object" || !Array.isArray(state.members) ||
-      !Array.isArray(state.applications) || !Array.isArray(state.sessions)) {
+  if (
+    !state ||
+    typeof state !== "object" ||
+    !Array.isArray(state.members) ||
+    !Array.isArray(state.applications) ||
+    !Array.isArray(state.sessions)
+  ) {
     throw new Error("Søknadsdatabasen har et ugyldig format");
   }
-  if (state.activities === undefined) state.activities = structuredClone(defaultActivities);
+  if (state.activities === undefined)
+    state.activities = structuredClone(defaultActivities);
   if (!Array.isArray(state.activities)) {
     throw new Error("Aktivitetene i søknadsdatabasen har et ugyldig format");
   }
-  if (state.courses === undefined) state.courses = structuredClone(defaultCourses);
+  if (state.courses === undefined)
+    state.courses = structuredClone(defaultCourses);
   if (!Array.isArray(state.courses)) {
     throw new Error("Kursene i søknadsdatabasen har et ugyldig format");
   }
@@ -288,7 +333,12 @@ function migrateStore(state) {
   if (state.adminAccount) {
     const ownerEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
     if (ownerEmail && Object.keys(state.adminAccount).length) {
-      state.admins.push({ id: randomUUID(), email: ownerEmail, role: "owner", ...state.adminAccount });
+      state.admins.push({
+        id: randomUUID(),
+        email: ownerEmail,
+        role: "owner",
+        ...state.adminAccount,
+      });
     }
     delete state.adminAccount;
   }
@@ -315,12 +365,13 @@ if (pool) {
   `);
   await pool.execute(
     "INSERT IGNORE INTO set18_application_state (id, payload) VALUES (1, ?)",
-    [JSON.stringify(state)]
+    [JSON.stringify(state)],
   );
   const [rows] = await pool.execute(
-    "SELECT payload FROM set18_application_state WHERE id = 1"
+    "SELECT payload FROM set18_application_state WHERE id = 1",
   );
-  if (!rows.length) throw new Error("Kunne ikke initialisere applikasjonsdata i MySQL");
+  if (!rows.length)
+    throw new Error("Kunne ikke initialisere applikasjonsdata i MySQL");
   state = migrateStore(parseDatabaseState(rows[0].payload));
 }
 
@@ -340,7 +391,7 @@ export function refreshStore() {
   if (!pool) return Promise.resolve(state);
   return enqueue(async () => {
     const [rows] = await pool.execute(
-      "SELECT payload FROM set18_application_state WHERE id = 1"
+      "SELECT payload FROM set18_application_state WHERE id = 1",
     );
     if (!rows.length) throw new Error("Applikasjonsdata mangler i MySQL");
     state = migrateStore(parseDatabaseState(rows[0].payload));
@@ -357,14 +408,14 @@ export function updateStore(mutator) {
         await connection.beginTransaction();
         transactionStarted = true;
         const [rows] = await connection.execute(
-          "SELECT payload FROM set18_application_state WHERE id = 1 FOR UPDATE"
+          "SELECT payload FROM set18_application_state WHERE id = 1 FOR UPDATE",
         );
         if (!rows.length) throw new Error("Applikasjonsdata mangler i MySQL");
         const databaseState = migrateStore(parseDatabaseState(rows[0].payload));
         const result = await mutator(databaseState);
         await connection.execute(
           "UPDATE set18_application_state SET payload = ? WHERE id = 1",
-          [JSON.stringify(databaseState)]
+          [JSON.stringify(databaseState)],
         );
         await connection.commit();
         transactionStarted = false;
@@ -375,7 +426,10 @@ export function updateStore(mutator) {
           try {
             await connection.rollback();
           } catch (rollbackError) {
-            throw new AggregateError([error, rollbackError], "MySQL-transaksjonen og tilbakerullingen feilet");
+            throw new AggregateError(
+              [error, rollbackError],
+              "MySQL-transaksjonen og tilbakerullingen feilet",
+            );
           }
         }
         throw error;
@@ -397,7 +451,7 @@ export async function saveUpload(storageName, content, contentType) {
     await pool.execute(
       `INSERT INTO set18_uploads (storage_name, content, content_type) VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE content = VALUES(content), content_type = VALUES(content_type)`,
-      [storageName, content, contentType]
+      [storageName, content, contentType],
     );
     return;
   }
@@ -410,7 +464,7 @@ export async function readUpload(storageName) {
   if (pool) {
     const [rows] = await pool.execute(
       "SELECT content FROM set18_uploads WHERE storage_name = ?",
-      [storageName]
+      [storageName],
     );
     return rows.length ? rows[0].content : null;
   }
@@ -424,7 +478,9 @@ export async function readUpload(storageName) {
 
 export async function deleteUpload(storageName) {
   if (pool) {
-    await pool.execute("DELETE FROM set18_uploads WHERE storage_name = ?", [storageName]);
+    await pool.execute("DELETE FROM set18_uploads WHERE storage_name = ?", [
+      storageName,
+    ]);
     return;
   }
   try {
