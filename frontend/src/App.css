@@ -1,6 +1,5 @@
-/* =========================
-   GRUNNLEGGENDE FARGER
-========================= */
+/* GRUNNLEGGENDE FARGER
+   Definerer fargene og standardinnstillingene for nettsiden.*/
 
 :root {
   --red: #c6284f;
@@ -20,9 +19,8 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* =========================
-   TOPPMENY
-========================= */
+/* TOPPMENY
+   Viser logoen og navigasjonslenkene øverst på siden. */
 
 .topbar {
   display: flex;
@@ -65,9 +63,8 @@ body {
   color: var(--red);
 }
 
-/* =========================
-   SIDEMENY OG HOVEDINNHOLD
-========================= */
+/* SIDEMENY OG HOVEDINNHOLD
+   Viser navigasjonsmenyen og innholdsområdet på siden. */
 
 .page-layout {
   display: grid;
