@@ -129,9 +129,8 @@ body {
   overflow: hidden;
 }
 
-/* =========================
-   HOVEDBILDE
-========================= */
+/* HOVEDBILDE
+   Viser hovedbildet med overskrift, tekst og lenke.*/
 
 .hero {
   display: flex;
@@ -199,9 +198,8 @@ body {
   background: #a92f2a;
 }
 
-/* =========================
-   INFORMASJONSKORT
-========================= */
+/* INFORMASJONSKORT
+   Viser kort med informasjon, ikoner og lenker.*/
 
 .cards,
 .content-grid,
@@ -293,9 +291,8 @@ body {
   color: #7c2bb3;
 }
 
-/* =========================
-   BUNNTEKST
-========================= */
+/* BUNNTEKST
+   Viser informasjon og lenker nederst på siden.*/
 
 .footer {
   display: flex;
@@ -315,9 +312,8 @@ body {
   text-decoration: none;
 }
 
-/* =========================
-   NETTBRETT
-========================= */
+/* NETTBRETT
+   Tilpasser nettsidens layout og innhold til nettbrett. */
 
 @media (max-width: 950px) {
   .topbar {
@@ -361,9 +357,8 @@ body {
   }
 }
 
-/* =========================
-   MOBIL
-========================= */
+/* MOBIL
+  Tilpasser nettsidens layout til mindre mobilskjermer. */
 
 @media (max-width: 600px) {
   .brand {
