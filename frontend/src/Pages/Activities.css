@@ -1,6 +1,5 @@
-/* =========================
-   HELE AKTIVITETSSIDEN
-========================= */
+/* HELE AKTIVITETSSIDEN
+  Viser aktiviteter og informasjon om hva besøkende kan delta på. */
 
 .activities-page {
   width: 100%;
@@ -8,9 +7,8 @@
   background: #ffffff;
 }
 
-/* =========================
-   INTRODUKSJON
-========================= */
+/*INTRODUKSJON
+   Viser en kort introduksjon til nettsiden og hva den handler om. */
 
 .activities-hero {
   display: flex;
@@ -62,9 +60,8 @@
   background: #8d263f;
 }
 
-/* =========================
-   SYMBOLER I INTRODUKSJONEN
-========================= */
+/*SYMBOLER I INTRODUKSJONEN
+   Viser små symboler som gjør introduksjonen mer oversiktlig. */
 
 .activities-symbols {
   position: relative;
@@ -110,9 +107,8 @@
   font-size: 52px;
 }
 
-/* =========================
-   KOMMENDE AKTIVITETER
-========================= */
+/* KOMMENDE AKTIVITETER
+   Viser aktiviteter som arrangeres fremover. */
 
 .upcoming-activities {
   max-width: 1250px;
@@ -206,9 +202,8 @@
   gap: 12px;
 }
 
-/* =========================
-   AKTIVITETSKORT
-========================= */
+/* AKTIVITETSKORT
+   Bestemmer størrelse, tekst og utseende på aktivitetskortene.*/
 
 .activity-list {
   display: grid;
@@ -825,9 +820,8 @@
   cursor: wait;
 }
 
-/* =========================
-   INFORMASJON NEDERST
-========================= */
+/* INFORMASJON NEDERST
+   Viser tekst og informasjon nederst på siden*/
 
 .activities-information {
   display: flex;
@@ -862,9 +856,8 @@
   color: #5c6862;
 }
 
-/* =========================
-   NETTBRETT
-========================= */
+/* NETTBRETT
+  Tilpasser størrelse og oppsett til nettbrett.*/
 
 @media (max-width: 1000px) {
   .activity-list {
@@ -876,9 +869,8 @@
   }
 }
 
-/* =========================
-   MOBIL
-========================= */
+/* MOBIL
+  Tilpasser størrelse og oppsett til mobil.*/
 
 @media (max-width: 700px) {
   .activities-hero {

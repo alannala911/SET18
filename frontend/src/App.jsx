@@ -127,9 +127,8 @@ function HomePage() {
   );
 }
 
-/* =========================
-   HELE NETTSIDEN
-========================= */
+/*  HELE NETTSIDEN
+   Definerer felles oppsett og grunnleggende stil for nettsiden.*/
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
