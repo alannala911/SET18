@@ -1,97 +1,13 @@
-
-
-import { useState } from "react";
-import {
-  FiArrowRight,
-  FiCalendar,
-  FiClock,
-  FiMapPin,
-  FiSearch,
-  FiTag,
-} from "react-icons/fi";
-
 import "./CoursePage.css";
 
-const courses = [
-  {
-    id: 1,
-    title: "Fletting av kurv i pil",
-    category: "Fletting",
-    description:
-      "Lær å flette en enkel kurv i pil. Kurset passer for både nybegynnere og litt øvede.",
-    date: "12. november 2026",
-    time: "17:00–21:00",
-    place: "Borge ungdomsskole, Sarpsborg",
-    price: "650 kr",
-    symbol: "🧺",
-    color: "basket",
-  },
-  {
-    id: 2,
-    title: "Toving – sitteunderlag",
-    category: "Toving",
-    description:
-      "Vi lager sitteunderlag i ull og lærer grunnleggende toveteknikker.",
-    date: "8. januar 2027",
-    time: "17:00–21:00",
-    place: "Moss kulturskole",
-    price: "550 kr",
-    symbol: "🧶",
-    color: "wool",
-  },
-  {
-    id: 3,
-    title: "Sy et enkelt skjørt",
-    category: "Søm",
-    description:
-      "Lær grunnleggende søm og tilpasning. Kurset passer for nybegynnere.",
-    date: "15. januar 2027",
-    time: "10:00–15:00",
-    place: "Råde husflidssenter",
-    price: "750 kr",
-    symbol: "🪡",
-    color: "sewing",
-  },
-  {
-    id: 4,
-    title: "Brodering – fra grunnteknikk til motiv",
-    category: "Broderi",
-    description:
-      "Lær grunnteknikker og lag ditt eget motiv. Passer for nybegynnere og litt øvede.",
-    date: "5. februar 2027",
-    time: "17:00–20:00",
-    place: "Moss kulturskole",
-    price: "600 kr",
-    symbol: "🌸",
-    color: "embroidery",
-  },
-  {
-    id: 5,
-    title: "Strikk votter med tradisjonelle mønstre",
-    category: "Strikking",
-    description:
-      "Lær å strikke votter med klassiske mønstre. Alle nivåer er velkomne.",
-    date: "12. februar 2027",
-    time: "17:00–21:00",
-    place: "Sarpsborg læringssenter",
-    price: "650 kr",
-    symbol: "🧤",
-    color: "knitting",
-  },
-  {
-    id: 6,
-    title: "Lag din egen nisse",
-    category: "Toving",
-    description:
-      "Vi tover nisser og julepynt. En hyggelig førjulsaktivitet for alle.",
-    date: "28. november 2026",
-    time: "17:00–20:00",
-    place: "Moss kulturskole",
-    price: "500 kr",
-    symbol: "🎄",
-    color: "christmas",
-  },
-];
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  FiArrowRight,
+  FiSearch,
+} from "react-icons/fi";
+import { apiRequest } from "./api.js";
+import { CourseCard } from "./CourseCard.jsx";
 
 const categories = [
   { name: "Alle kurs", symbol: "✦" },
@@ -103,17 +19,79 @@ const categories = [
 ];
 
 export default function Courses() {
+  const [courseList, setCourseList] = useState([]);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] =
-    useState("Alle kurs");
+  const [selectedCategory, setSelectedCategory] = useState("Alle kurs");
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isEditingCourses, setIsEditingCourses] = useState(false);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [courseLoadError, setCourseLoadError] = useState("");
+  const [courseActionError, setCourseActionError] = useState("");
+  const [coursePendingRemoval, setCoursePendingRemoval] = useState(null);
+  const [removalConfirmationStage, setRemovalConfirmationStage] = useState(1);
+  const [isRemovingCourse, setIsRemovingCourse] = useState(false);
 
-  const filteredCourses = courses.filter((course) => {
+  const loadCourses = useCallback(async () => {
+    let isAdmin = false;
+    let sessionErrorMessage = "";
+    try {
+      await apiRequest("/auth/me");
+      isAdmin = true;
+    } catch (sessionError) {
+      if (sessionError.status !== 401) sessionErrorMessage = sessionError.message;
+    }
+
+    const loadedCourses = await apiRequest(isAdmin ? "/courses?scope=all" : "/courses");
+    if (!Array.isArray(loadedCourses)) throw new Error("Kurslisten har et ugyldig format.");
+    return { loadedCourses, isAdmin, sessionErrorMessage };
+  }, []);
+
+  useEffect(() => {
+    let isComponentMounted = true;
+    let requestSequence = 0;
+    const refreshCourses = () => {
+      const sequence = ++requestSequence;
+      loadCourses()
+        .then(({ loadedCourses, isAdmin, sessionErrorMessage }) => {
+          if (!isComponentMounted || sequence !== requestSequence) return;
+          setCourseLoadError("");
+          setCourseActionError(sessionErrorMessage);
+          setIsAdminAuthenticated(isAdmin);
+          setCourseList(loadedCourses);
+        })
+        .catch((loadError) => {
+          if (isComponentMounted && sequence === requestSequence) {
+            setCourseLoadError(loadError.message);
+          }
+        })
+        .finally(() => {
+          if (isComponentMounted && sequence === requestSequence) {
+            setIsLoadingCourses(false);
+          }
+        });
+    };
+
+    refreshCourses();
+    window.addEventListener("set18-auth-change", refreshCourses);
+    return () => {
+      isComponentMounted = false;
+      window.removeEventListener("set18-auth-change", refreshCourses);
+    };
+  }, [loadCourses]);
+
+  const categoryOptions = [
+    ...categories,
+    ...[...new Set(courseList.map((course) => course.category))]
+      .filter((name) => !categories.some((category) => category.name === name))
+      .map((name) => ({ name, symbol: "✦" })),
+  ];
+
+  const filteredCourses = courseList.filter((course) => {
+    const searchTerm = search.toLowerCase();
     const matchesSearch =
-      course.title.toLowerCase().includes(search.toLowerCase()) ||
-      course.description
-        .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      course.place.toLowerCase().includes(search.toLowerCase());
+      course.title.toLowerCase().includes(searchTerm) ||
+      course.description.toLowerCase().includes(searchTerm) ||
+      course.place.toLowerCase().includes(searchTerm);
 
     const matchesCategory =
       selectedCategory === "Alle kurs" ||
@@ -121,6 +99,49 @@ export default function Courses() {
 
     return matchesSearch && matchesCategory;
   });
+
+  function toggleCourseEditing() {
+    setCourseActionError("");
+    setIsEditingCourses((currentlyEditing) => !currentlyEditing);
+  }
+
+  function beginCourseRemoval(course) {
+    setCourseActionError("");
+    setCoursePendingRemoval(course);
+    setRemovalConfirmationStage(1);
+  }
+
+  async function confirmCourseRemoval() {
+    if (!coursePendingRemoval) return;
+    if (removalConfirmationStage === 1) {
+      setRemovalConfirmationStage(2);
+      return;
+    }
+    setIsRemovingCourse(true);
+    setCourseActionError("");
+    try {
+      await apiRequest(`/courses/${encodeURIComponent(coursePendingRemoval.id)}`, { method: "DELETE" });
+      setCourseList((currentCourses) => currentCourses.map((course) =>
+        course.id === coursePendingRemoval.id
+          ? { ...course, status: "archived" }
+          : course
+      ));
+      setCoursePendingRemoval(null);
+      setRemovalConfirmationStage(1);
+    } catch (removalError) {
+      setCourseActionError(removalError.message);
+      setCoursePendingRemoval(null);
+      setRemovalConfirmationStage(1);
+    } finally {
+      setIsRemovingCourse(false);
+    }
+  }
+
+  function cancelCourseRemoval() {
+    if (isRemovingCourse) return;
+    setCoursePendingRemoval(null);
+    setRemovalConfirmationStage(1);
+  }
 
   return (
     <main className="courses-page">
@@ -156,7 +177,7 @@ export default function Courses() {
         className="course-categories"
         aria-label="Kurskategorier"
       >
-        {categories.map((category) => (
+        {categoryOptions.map((category) => (
           <button
             key={category.name}
             type="button"
@@ -165,9 +186,7 @@ export default function Courses() {
                 ? "category-button selected"
                 : "category-button"
             }
-            onClick={() =>
-              setSelectedCategory(category.name)
-            }
+            onClick={() => setSelectedCategory(category.name)}
           >
             <span aria-hidden="true">{category.symbol}</span>
             {category.name}
@@ -184,9 +203,7 @@ export default function Courses() {
             type="search"
             placeholder="Søk etter kurs ..."
             value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
+            onChange={(event) => setSearch(event.target.value)}
           />
         </label>
 
@@ -195,15 +212,10 @@ export default function Courses() {
 
           <select
             value={selectedCategory}
-            onChange={(event) =>
-              setSelectedCategory(event.target.value)
-            }
+            onChange={(event) => setSelectedCategory(event.target.value)}
           >
-            {categories.map((category) => (
-              <option
-                key={category.name}
-                value={category.name}
-              >
+            {categoryOptions.map((category) => (
+              <option key={category.name} value={category.name}>
                 {category.name}
               </option>
             ))}
@@ -228,114 +240,73 @@ export default function Courses() {
           </span>
         </header>
 
-        {filteredCourses.length > 0 ? (
+        {isAdminAuthenticated && (
+          <div className="course-admin-actions">
+            <button type="button" onClick={toggleCourseEditing}>
+              {isEditingCourses ? "Avslutt redigering" : "Rediger kurs"}
+            </button>
+            <Link to="/kurs/ny">Legg til kurs</Link>
+          </div>
+        )}
+
+        {courseActionError && <p className="course-error" role="alert">{courseActionError}</p>}
+        {courseLoadError && <p className="course-error" role="alert">{courseLoadError}</p>}
+
+        {isLoadingCourses ? (
+          <p className="no-courses">Laster kurs …</p>
+        ) : filteredCourses.length > 0 ? (
           <section
             className="course-grid"
             aria-label="Kommende kurs"
           >
             {filteredCourses.map((course) => (
-              <article className="course-card" key={course.id}>
-                <header
-                  className={`course-image ${course.color}`}
-                >
-                  <span aria-hidden="true">
-                    {course.symbol}
-                  </span>
-                </header>
-
-                <section className="course-card-content">
-                  <p className="course-category">
-                    {course.category}
-                  </p>
-
-                  <h3>{course.title}</h3>
-
-                  <p className="course-description">
-                    {course.description}
-                  </p>
-
-                  <ul>
-                    <li>
-                      <FiCalendar aria-hidden="true" />
-                      {course.date}
-                    </li>
-
-                    <li>
-                      <FiClock aria-hidden="true" />
-                      {course.time}
-                    </li>
-
-                    <li>
-                      <FiMapPin aria-hidden="true" />
-                      {course.place}
-                    </li>
-
-                    <li>
-                      <FiTag aria-hidden="true" />
-                      Pris: {course.price}
-                    </li>
-                  </ul>
-
-                  <button type="button">
-                    Les mer og meld deg på
-                    <FiArrowRight aria-hidden="true" />
-                  </button>
-                </section>
-              </article>
+              <CourseCard
+                key={course.id}
+                course={course}
+                showEditControls={isEditingCourses && isAdminAuthenticated}
+                onRemove={beginCourseRemoval}
+              />
             ))}
           </section>
         ) : (
           <p className="no-courses">
-            Vi fant ingen kurs som passer med søket ditt.
+            {courseList.length === 0 && !courseLoadError
+              ? "Det er ingen kommende kurs å vise."
+              : "Vi fant ingen kurs som passer med søket ditt."}
           </p>
         )}
       </section>
+
+      {coursePendingRemoval && (
+        <div className="course-dialog-backdrop">
+          <section
+            className="course-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="course-dialog-title"
+            aria-describedby="course-dialog-description"
+          >
+            <h2 id="course-dialog-title">
+              {removalConfirmationStage === 2
+                ? "Er du sikker? Kurset arkiveres"
+                : "Ønsker du å arkivere dette kurset?"}
+            </h2>
+            <p id="course-dialog-description">
+              {removalConfirmationStage === 2
+                ? `Kurset «${coursePendingRemoval.title}» skjules for besøkende. Du kan publisere det igjen ved å redigere status.`
+                : `Vil du arkivere «${coursePendingRemoval.title}»?`}
+            </p>
+            <div className="course-dialog-actions">
+              <button type="button" onClick={cancelCourseRemoval} disabled={isRemovingCourse}>
+                Nei
+              </button>
+              <button type="button" onClick={confirmCourseRemoval} disabled={isRemovingCourse}>
+                {isRemovingCourse ? "Arkiverer …" : "Ja"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
-}
-
-/* Svart tekst */
-
-.courses-page,
-.courses-hero h1,
-.courses-hero p:not(.courses-label),
-.category-button,
-.course-results h2,
-.course-card h3,
-.course-description,
-.course-card li,
-.course-search input,
-.course-select select {
-  color: #1f1f1f;
-}
-
-/* Røde knapper */
-
-.courses-hero a,
-.course-card button {
-  color: white;
-  background: #b52d4d;
-}
-
-.courses-hero a:hover,
-.course-card button:hover {
-  background: #852b3b;
-}
-
-/* Røde detaljer */
-
-.category-button:hover,
-.category-button.selected {
-  color: #1f1f1f;
-  border-color: #b52d4d;
-}
-
-.course-category {
-  color: #852b3b;
-  background: #f6dfe5;
-}
-
-.course-card li svg,
-.course-search svg {
-  color: #b52d4d;
 }
