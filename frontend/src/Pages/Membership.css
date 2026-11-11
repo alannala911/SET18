@@ -41,6 +41,12 @@
   font-weight: 700;
 }
 
+.my-page-invalid-login-link {
+  color: #721c24;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .my-page-account-actions {
   display: grid;
   justify-items: start;

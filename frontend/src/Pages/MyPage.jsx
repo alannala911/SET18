@@ -13,7 +13,7 @@ function getMemberName(member) {
   return [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email || "medlem";
 }
 
-function LoginForm({ credentials, onCredentialsChange, error, busy, onSubmit }) {
+function LoginForm({ credentials, onCredentialsChange, error, invalidCredentials, busy, onSubmit }) {
   function updateCredential(field, value) {
     onCredentialsChange((currentCredentials) => ({ ...currentCredentials, [field]: value }));
   }
@@ -46,7 +46,12 @@ function LoginForm({ credentials, onCredentialsChange, error, busy, onSubmit }) 
             </label>
           </div>
         </section>
-        {error && <p className="membership-alert membership-error" role="alert">{error}</p>}
+        {invalidCredentials ? (
+          <p className="membership-alert membership-error" role="alert">
+            Ugyldig e-post og/eller passord. Prøv igjen eller{" "}
+            <Link className="my-page-invalid-login-link" to="/medlemskap">bli medlem</Link>.
+          </p>
+        ) : error && <p className="membership-alert membership-error" role="alert">{error}</p>}
         <button className="membership-submit" disabled={busy}>
           {busy ? "Logger inn …" : "Logg inn"}
         </button>
@@ -70,6 +75,7 @@ export default function MyPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [sessionRole, setSessionRole] = useState("");
   const [error, setError] = useState("");
+  const [invalidCredentials, setInvalidCredentials] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -115,6 +121,7 @@ export default function MyPage() {
   async function login(event) {
     event.preventDefault();
     setError("");
+    setInvalidCredentials(false);
     setBusy(true);
 
     try {
@@ -122,10 +129,15 @@ export default function MyPage() {
       try {
         await apiRequest("/membership/login", loginOptions);
       } catch (memberLoginError) {
+        if (memberLoginError.status !== 401) throw memberLoginError;
         try {
           await apiRequest("/auth/login", loginOptions);
-        } catch {
-          throw memberLoginError;
+        } catch (adminLoginError) {
+          if (adminLoginError.status === 401) {
+            setInvalidCredentials(true);
+            return;
+          }
+          throw adminLoginError;
         }
       }
 
@@ -163,15 +175,6 @@ export default function MyPage() {
     );
   }
 
-  if (error && !sessionRole) {
-    return (
-      <main className="main-content membership-page">
-        {pageHeading}
-        <p className="membership-alert membership-error" role="alert">{error}</p>
-      </main>
-    );
-  }
-
   if (sessionRole) {
     return (
       <main className="main-content membership-page">
@@ -197,8 +200,13 @@ export default function MyPage() {
       {pageHeading}
       <LoginForm
         credentials={credentials}
-        onCredentialsChange={setCredentials}
+        onCredentialsChange={(updateCredentials) => {
+          setCredentials(updateCredentials);
+          setError("");
+          setInvalidCredentials(false);
+        }}
         error={error}
+        invalidCredentials={invalidCredentials}
         busy={busy}
         onSubmit={login}
       />

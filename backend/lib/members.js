@@ -1,9 +1,17 @@
 export function adminProfile(account) {
   const { person = {}, address = {}, localGroup } = account?.profile || {};
   return {
-    person: { firstName: "", middleName: "", lastName: "", gender: "", email: account?.email || "", phone: "", ...person },
+    person: {
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      gender: "",
+      email: account?.email || "",
+      phone: "",
+      ...person,
+    },
     address: { street: "", postalCode: "", city: "", ...address },
-    ...(localGroup ? { localGroup } : {})
+    ...(localGroup ? { localGroup } : {}),
   };
 }
 
@@ -19,15 +27,21 @@ export function agreementsFrom(values) {
   return {
     termsAccepted: true,
     emailOffers: values.emailOffers === true,
-    smsOffers: values.smsOffers === true
+    smsOffers: values.smsOffers === true,
   };
 }
 
 const contactProfiles = ["person", "child", "recipient", "applicant"];
 
 function memberContact(member, field) {
-  return member[field] || contactProfiles.map((profile) => member.profile?.[profile]?.[field]).find(Boolean) ||
-    member.profile?.[field] || "";
+  return (
+    member[field] ||
+    contactProfiles
+      .map((profile) => member.profile?.[profile]?.[field])
+      .find(Boolean) ||
+    member.profile?.[field] ||
+    ""
+  );
 }
 
 export const memberEmail = (member) => memberContact(member, "email");
@@ -35,7 +49,7 @@ export const memberPhone = (member) => memberContact(member, "phone");
 
 const offerChannels = {
   email: { optInField: "emailOffers", contact: memberEmail },
-  sms: { optInField: "smsOffers", contact: memberPhone }
+  sms: { optInField: "smsOffers", contact: memberPhone },
 };
 
 export function isOfferChannel(channel) {
@@ -45,14 +59,21 @@ export function isOfferChannel(channel) {
 export function offerRecipients(members, channel) {
   const { optInField, contact } = offerChannels[channel];
   return members
-    .filter((member) => member.status === "active" && member.profile?.[optInField] === true && contact(member))
+    .filter(
+      (member) =>
+        member.status === "active" &&
+        member.profile?.[optInField] === true &&
+        contact(member),
+    )
     .map((member) => ({ id: member.id, contact: contact(member) }));
 }
 
 export function memberName(member) {
   const { person, child, recipient, applicant } = member.profile || {};
   const named = person || child || recipient || applicant || {};
-  return [named.firstName, named.middleName, named.lastName].filter(Boolean).join(" ");
+  return [named.firstName, named.middleName, named.lastName]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function phoneDigits(phone) {
@@ -67,9 +88,11 @@ function addOneYear(isoDate) {
   return dateOnly(date);
 }
 
-export const membershipValidUntil = (member) => member.validUntil || addOneYear(member.createdAt.slice(0, 10));
+export const membershipValidUntil = (member) =>
+  member.validUntil || addOneYear(member.createdAt.slice(0, 10));
 
-export const membershipExpired = (member) => membershipValidUntil(member) < dateOnly(new Date());
+export const membershipExpired = (member) =>
+  membershipValidUntil(member) < dateOnly(new Date());
 
 export function renewedValidUntil(member) {
   const current = membershipValidUntil(member);
@@ -90,6 +113,6 @@ export function memberSummary(member) {
     expired: membershipExpired(member),
     emailOffers: member.profile?.emailOffers === true,
     smsOffers: member.profile?.smsOffers === true,
-    createdAt: member.createdAt
+    createdAt: member.createdAt,
   };
 }

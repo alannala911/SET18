@@ -7,7 +7,7 @@ router.post("/", (req, res) => {
 
   if (!name || !email || !message) {
     return res.status(400).json({
-      message: "Navn, e-postadresse og melding er påkrevd"
+      message: "Navn, e-postadresse og melding er påkrevd",
     });
   }
 
@@ -16,8 +16,8 @@ router.post("/", (req, res) => {
     submitted: {
       name,
       email,
-      message
-    }
+      message,
+    },
   });
 });
 
