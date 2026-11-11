@@ -1,0 +1,189 @@
+/* Hele Om oss-siden */
+
+.about-page {
+  flex: 1;
+  min-width: 0;
+  padding: 30px;
+  color: #1f1f1f;
+  background: white;
+}
+
+.about-page,
+.about-page * {
+  box-sizing: border-box;
+}
+
+.about-page p {
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.about-page h1,
+.about-page h2,
+.about-page h3 {
+  color: #1f1f1f;
+}
+
+/* Introduksjon */
+
+.about-intro {
+  padding: 30px;
+  border-radius: 14px;
+  background: #f8edef;
+}
+
+.about-intro h1 {
+  margin: 10px 0;
+  font-size: clamp(32px, 4vw, 48px);
+}
+
+.about-intro p {
+  margin: 0;
+}
+
+.about-page .about-label {
+  color: #852b3b;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Tekst og bilde ved siden av hverandre */
+
+.about-story {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 35px;
+  margin: 35px 0;
+}
+
+.about-story h2 {
+  margin-top: 0;
+  font-size: 30px;
+}
+
+.about-story img {
+  display: block;
+  width: 100%;
+  height: 310px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+/* De tre fokusområdene */
+
+.about-values > h2 {
+  margin-bottom: 20px;
+  font-size: 30px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.about-card {
+  padding: 25px;
+  border: 1px solid #d9b4bd;
+  border-radius: 12px;
+  background: white;
+}
+
+.about-card svg {
+  width: 38px;
+  height: 38px;
+  color: #852b3b;
+}
+
+.about-card h3 {
+  margin: 15px 0 10px;
+  font-size: 23px;
+}
+
+.about-card p {
+  margin: 0;
+}
+
+/* Området med lenker videre */
+
+.about-join {
+  margin-top: 35px;
+  padding: 30px;
+  border-radius: 14px;
+  background: #f8edef;
+}
+
+.about-join h2 {
+  margin: 0;
+  font-size: 30px;
+}
+
+.about-join p {
+  margin: 12px 0 20px;
+}
+
+.about-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.about-buttons a {
+  display: inline-block;
+  padding: 12px 20px;
+  border: 1px solid #b52d4d;
+  border-radius: 8px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.about-primary {
+  color: white;
+  background: #b52d4d;
+}
+
+.about-primary:hover {
+  border-color: #852b3b;
+  background: #852b3b;
+}
+
+.about-secondary {
+  color: #852b3b;
+  background: white;
+}
+
+.about-secondary:hover {
+  background: #f6dfe5;
+}
+
+.about-buttons a:focus-visible {
+  outline: 3px solid #852b3b;
+  outline-offset: 4px;
+}
+
+/* Mobil og mindre skjermer */
+
+@media (max-width: 900px) {
+  .about-story,
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .about-page {
+    padding: 20px;
+  }
+
+  .about-intro,
+  .about-join {
+    padding: 22px;
+  }
+
+  .about-story img {
+    height: 230px;
+  }
+}

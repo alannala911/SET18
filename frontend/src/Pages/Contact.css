@@ -1,0 +1,265 @@
+/* Hele kontaktsiden */
+
+.contact-page {
+  flex: 1;
+  min-width: 0;
+  padding: 30px;
+  color: #1f1f1f;
+  background: white;
+}
+
+.contact-page,
+.contact-page * {
+  box-sizing: border-box;
+}
+
+.contact-page p {
+  line-height: 1.6;
+}
+
+.contact-page h1,
+.contact-page h2,
+.contact-page h3 {
+  color: #1f1f1f;
+}
+
+.contact-page a {
+  color: #852b3b;
+  overflow-wrap: anywhere;
+}
+
+/* Introduksjon */
+
+.contact-intro {
+  padding: 30px;
+  border-radius: 14px;
+  background: #f8edef;
+}
+
+.contact-intro h1 {
+  margin: 10px 0;
+  font-size: clamp(36px, 4vw, 48px);
+}
+
+.contact-intro p {
+  margin: 0;
+  font-size: 18px;
+}
+
+.contact-intro .contact-label {
+  color: #852b3b;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Skjema og kontaktinformasjon */
+
+.contact-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.contact-form,
+.contact-information {
+  min-width: 0;
+  padding: 28px;
+  border-radius: 12px;
+}
+
+.contact-form {
+  border: 1px solid #ddd;
+}
+
+.contact-layout h2 {
+  margin-top: 0;
+  font-size: 28px;
+}
+
+/* Skjemafeltene */
+
+.contact-form label {
+  display: block;
+  margin: 20px 0 8px;
+  font-weight: bold;
+}
+
+.contact-form input,
+.contact-form select,
+.contact-form textarea {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  color: #1f1f1f;
+  background: white;
+  font: inherit;
+}
+
+.contact-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.contact-form button {
+  margin-top: 20px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: #b52d4d;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.contact-form button:hover {
+  background: #852b3b;
+}
+
+.contact-page .contact-notice {
+  color: #555;
+  font-size: 14px;
+}
+
+.contact-status {
+  margin-bottom: 0;
+  font-weight: bold;
+}
+
+/* Kontaktinformasjonen til høyre */
+
+.contact-information {
+  background: #f8edef;
+}
+
+.contact-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 22px 0;
+  border-bottom: 1px solid #dccbd0;
+}
+
+.contact-detail > svg {
+  width: 28px;
+  height: 28px;
+  color: #852b3b;
+  flex-shrink: 0;
+}
+
+.contact-detail > section {
+  min-width: 0;
+}
+
+.contact-detail h3,
+.contact-person h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.contact-detail a,
+.contact-detail address {
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.contact-detail address {
+  font-style: normal;
+}
+
+.contact-person {
+  margin-top: 25px;
+}
+
+.contact-person p {
+  margin: 0;
+}
+
+/* Styret og kontaktpersonene */
+
+.contact-board {
+  margin-top: 35px;
+}
+
+.contact-board > h2 {
+  font-size: 30px;
+}
+
+.contact-board-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.contact-person-card {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: white;
+}
+
+.contact-person-card .contact-role {
+  margin: 0 0 8px;
+  color: #852b3b;
+  font-weight: bold;
+}
+
+.contact-person-card h3 {
+  margin: 0 0 16px;
+  font-size: 24px;
+}
+
+.contact-person-card a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.contact-person-card svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+/* Tastaturnavigasjon */
+
+.contact-page input:focus-visible,
+.contact-page select:focus-visible,
+.contact-page textarea:focus-visible,
+.contact-page button:focus-visible,
+.contact-page a:focus-visible {
+  outline: 3px solid #852b3b;
+  outline-offset: 4px;
+}
+
+/* Mindre skjermer */
+
+@media (max-width: 1000px) {
+  .contact-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .contact-page {
+    padding: 20px;
+  }
+
+  .contact-intro,
+  .contact-form,
+  .contact-information {
+    padding: 22px;
+  }
+
+  .contact-board-grid {
+    grid-template-columns: 1fr;
+  }
+}
