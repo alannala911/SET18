@@ -12,6 +12,7 @@ import {
 /* Sider */
 import { FiHome, FiHeart, FiUser } from "react-icons/fi";
 import Courses from "./Pages/Courses.jsx";
+import CourseEditor from "./Pages/CourseEditor.jsx";
 import Activities from "./Pages/Activities.jsx";
 import { ActivityEditor } from "./Pages/ActivityEditor.jsx";
 import News from "./Pages/News.jsx";
@@ -126,9 +127,8 @@ function HomePage() {
   );
 }
 
-/* =========================
-   HELE NETTSIDEN
-========================= */
+/*  HELE NETTSIDEN
+   Definerer felles oppsett og grunnleggende stil for nettsiden.*/
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -358,6 +358,16 @@ function App() {
           <Route
             path="/kurs"
             element={<Courses />}
+          />
+
+          <Route
+            path="/kurs/ny"
+            element={<CourseEditor />}
+          />
+
+          <Route
+            path="/kurs/:courseId/rediger"
+            element={<CourseEditor />}
           />
 
           <Route

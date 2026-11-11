@@ -21,20 +21,31 @@ const defaultOrigins = [
   "http://localhost:4173",
   "http://127.0.0.1:4173",
   "http://localhost:3000",
-  "http://127.0.0.1:3000"
+  "http://127.0.0.1:3000",
 ];
 
 if (process.env.NODE_ENV === "production") {
-  const requiredSettings = ["ADMIN_EMAIL", "ADMIN_PASSWORD", "CORS_ORIGINS", "PUBLIC_FRONTEND_URL"];
-  const missingSettings = requiredSettings.filter((setting) => !process.env[setting]?.trim());
+  const requiredSettings = [
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD",
+    "CORS_ORIGINS",
+    "PUBLIC_FRONTEND_URL",
+  ];
+  const missingSettings = requiredSettings.filter(
+    (setting) => !process.env[setting]?.trim(),
+  );
   if (missingSettings.length) {
-    throw new Error(`Disse miljøvariablene må settes i produksjon: ${missingSettings.join(", ")}`);
+    throw new Error(
+      `Disse miljøvariablene må settes i produksjon: ${missingSettings.join(", ")}`,
+    );
   }
   if (process.env.ADMIN_PASSWORD.length < 12) {
     throw new Error("ADMIN_PASSWORD må være minst 12 tegn i produksjon");
   }
 
-  const origins = process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim());
+  const origins = process.env.CORS_ORIGINS.split(",").map((origin) =>
+    origin.trim(),
+  );
   const validOrigins = origins.every((origin) => {
     try {
       const url = new URL(origin);
@@ -47,11 +58,18 @@ if (process.env.NODE_ENV === "production") {
   try {
     frontendUrl = new URL(process.env.PUBLIC_FRONTEND_URL);
   } catch {
-    throw new Error("PUBLIC_FRONTEND_URL må være en gyldig HTTPS-adresse i produksjon");
+    throw new Error(
+      "PUBLIC_FRONTEND_URL må være en gyldig HTTPS-adresse i produksjon",
+    );
   }
-  if (!validOrigins || frontendUrl.protocol !== "https:" ||
-      !origins.includes(frontendUrl.origin)) {
-    throw new Error("CORS_ORIGINS må inneholde HTTPS-opprinnelsen til PUBLIC_FRONTEND_URL");
+  if (
+    !validOrigins ||
+    frontendUrl.protocol !== "https:" ||
+    !origins.includes(frontendUrl.origin)
+  ) {
+    throw new Error(
+      "CORS_ORIGINS må inneholde HTTPS-opprinnelsen til PUBLIC_FRONTEND_URL",
+    );
   }
 }
 
@@ -59,7 +77,7 @@ const allowedOrigins = new Set(
   (process.env.CORS_ORIGINS || defaultOrigins.join(","))
     .split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean)
+    .filter(Boolean),
 );
 
 app.disable("x-powered-by");
@@ -72,12 +90,15 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(cors({
-  origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
-}));
+app.use(
+  cors({
+    origin: (origin, callback) =>
+      callback(null, !origin || allowedOrigins.has(origin)),
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  }),
+);
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", async (req, res) => {
@@ -86,11 +107,13 @@ app.get("/api/health", async (req, res) => {
     res.json({
       status: "ok",
       service: "Østfold Husflidslag backend",
-      storage: process.env.MYSQL_URL ? "mysql" : "local"
+      storage: process.env.MYSQL_URL ? "mysql" : "local",
     });
   } catch (error) {
     console.error(`Health check failed: ${error.message}`);
-    res.status(503).json({ status: "unavailable", service: "Østfold Husflidslag backend" });
+    res
+      .status(503)
+      .json({ status: "unavailable", service: "Østfold Husflidslag backend" });
   }
 });
 
@@ -110,7 +133,7 @@ app.use("/api/admin", adminRoutes);
 
 const frontendDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../frontend/dist"
+  "../frontend/dist",
 );
 app.use(express.static(frontendDist));
 app.get(/^\/(?!api\/).*/, (req, res) => {
@@ -120,7 +143,9 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 function handleRequestError(error, req, res, next) {
   if (res.headersSent) return next(error);
   if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-    return res.status(400).json({ message: "Forespørselen må inneholde gyldig JSON" });
+    return res
+      .status(400)
+      .json({ message: "Forespørselen må inneholde gyldig JSON" });
   }
   console.error(error.message);
   res.status(500).json({ message: "Noe gikk galt" });
