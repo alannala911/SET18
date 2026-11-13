@@ -1,9 +1,9 @@
 
 import { useState } from "react";
 
-import bilde1 from "../assets/bilder til nettsiden/bilde1.jpg";
-import bilde2 from "../assets/bilder til nettsiden/bilde2.jpg";
-import bilde3 from "../assets/bilder til nettsiden/bilde3.jpg";
+import bilde1 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde1.jpg";
+import bilde2 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde2.jpg";
+import bilde3 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde3.jpg";
 
 import "./News.css";
 
@@ -71,21 +71,32 @@ function NewsCard({ item, featured = false }) {
           : "news-card"
       }
     >
-      <img src={item.image} alt="" loading="lazy" />
+      <img
+        src={item.image}
+        alt=""
+        loading="lazy"
+      />
 
       <section className="news-card-content">
+
         <p className="news-meta">
           {item.category} · {item.date}
         </p>
 
         <h2>{item.title}</h2>
 
-        <p>{item.summary}</p>
+        <p className="news-summary">
+          {item.summary}
+        </p>
 
         <details>
           <summary>Les mer</summary>
-          <p>{item.text}</p>
+
+          <p className="news-text">
+            {item.text}
+          </p>
         </details>
+
       </section>
     </article>
   );
@@ -97,6 +108,7 @@ export default function News() {
 
   /* Søker gjennom tittel, ingress og tekst */
   const filteredNews = news.filter((item) => {
+
     const searchText = `
       ${item.title}
       ${item.summary}
@@ -119,6 +131,7 @@ export default function News() {
 
       {/* Introduksjon */}
       <header className="news-intro">
+
         <p className="news-label">
           Fra Østfold Husflidslag
         </p>
@@ -128,6 +141,7 @@ export default function News() {
         <p>
           Små og store nyheter fra husflidsmiljøet i Østfold.
         </p>
+
       </header>
 
       {/* Søk og filtrering */}
@@ -135,7 +149,9 @@ export default function News() {
         className="news-tools"
         aria-label="Søk og filtrering"
       >
+
         <label className="news-search">
+
           <span>Søk i nyheter</span>
 
           <input
@@ -146,13 +162,16 @@ export default function News() {
               setSearch(event.target.value)
             }
           />
+
         </label>
 
         <nav
           className="news-filters"
           aria-label="Nyhetskategorier"
         >
+
           {categories.map((name) => (
+
             <button
               key={name}
               type="button"
@@ -164,11 +183,14 @@ export default function News() {
             >
               {name}
             </button>
+
           ))}
+
         </nav>
+
       </section>
 
-      {/* Informasjon om antall nyheter */}
+      {/* Antall nyheter */}
       <p className="news-count" aria-live="polite">
         Viser {filteredNews.length} av {news.length} nyheter
       </p>
@@ -181,33 +203,39 @@ export default function News() {
       {/* Nyheter */}
       {filteredNews.length > 0 ? (
         <>
+          {/* Første nyhet - fremhevet */}
           <NewsCard
             item={filteredNews[0]}
             featured
           />
 
+          {/* Flere nyheter */}
           {filteredNews.length > 1 && (
-            <section
-              className="news-more"
-              aria-labelledby="more-news"
-            >
-              <h2 id="more-news">
-                Flere nyheter
-              </h2>
+            <section className="news-more">
+
+              <h2>Flere nyheter</h2>
 
               <section className="news-grid">
+
                 {filteredNews.slice(1).map((item) => (
+
                   <NewsCard
                     key={item.id}
                     item={item}
                   />
+
                 ))}
+
               </section>
+
             </section>
           )}
         </>
       ) : (
+
+        /* Hvis ingen nyheter passer med søket */
         <div className="news-empty">
+
           <h2>Ingen nyheter funnet</h2>
 
           <p>
@@ -224,8 +252,11 @@ export default function News() {
           >
             Vis alle nyheter
           </button>
+
         </div>
+
       )}
+
     </main>
   );
 }

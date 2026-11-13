@@ -79,6 +79,8 @@
   outline-offset: 3px;
 }
 
+/* Kategoriknapper */
+
 .news-filters {
   display: flex;
   flex-wrap: wrap;
@@ -93,7 +95,7 @@
   background: white;
   font: inherit;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: 0.2s;
 }
 
 .news-filters button:hover {
@@ -121,14 +123,14 @@
   font-size: 14px;
 }
 
-/* Nyhetskort */
+/* Felles nyhetskort */
 
 .news-page .news-card {
   overflow: hidden;
   border: 1px solid #ddd;
   border-radius: 12px;
   background: white;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: box-shadow 0.2s;
 }
 
 .news-card:hover {
@@ -140,6 +142,7 @@
   width: 100%;
   height: 190px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .news-card-content {
@@ -150,6 +153,7 @@
   margin: 10px 0;
   color: #1f1f1f;
   font-size: 23px;
+  line-height: 1.3;
 }
 
 .news-card-content p {
@@ -184,21 +188,35 @@
   margin-bottom: 12px;
 }
 
-/* Fremhevet nyhet */
+.news-card .news-text {
+  margin-top: 10px;
+  color: #333;
+}
+
+/* Første nyhet - fremhevet, men litt mindre */
 
 .news-page .news-featured {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: 0.9fr 1.1fr;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
   background: #f8edef;
 }
 
 .news-featured > img {
-  height: 100%;
-  min-height: 290px;
+  width: 100%;
+  height: 250px;
+  min-height: 0;
+  object-fit: cover;
+}
+
+.news-featured .news-card-content {
+  padding: 20px;
 }
 
 .news-featured h2 {
-  font-size: 32px;
+  font-size: 27px;
 }
 
 /* Flere nyheter */
@@ -216,10 +234,34 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 
-/* Ingen treff */
+/* Like store kort under første nyhet */
+
+.news-grid .news-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.news-grid .news-card > img {
+  height: 190px;
+  flex-shrink: 0;
+}
+
+.news-grid .news-card-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.news-grid .news-summary {
+  flex: 1;
+}
+
+/* Ingen nyheter funnet */
 
 .news-empty {
   padding: 30px;
@@ -274,23 +316,6 @@
     padding: 24px;
   }
 
-  .news-page .news-featured {
-    grid-template-columns: 1fr;
-  }
-
-  .news-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .news-featured > img {
-    height: 220px;
-    min-height: 0;
-  }
-
-  .news-featured h2 {
-    font-size: 26px;
-  }
-
   .news-tools {
     align-items: stretch;
     flex-direction: column;
@@ -307,6 +332,24 @@
   .news-filters button {
     padding: 10px 13px;
     font-size: 14px;
+  }
+
+  /* Første nyhet på mobil */
+  .news-page .news-featured {
+    grid-template-columns: 1fr;
+  }
+
+  .news-featured > img {
+    height: 210px;
+  }
+
+  .news-featured h2 {
+    font-size: 24px;
+  }
+
+  /* Flere nyheter på mobil */
+  .news-grid {
+    grid-template-columns: 1fr;
   }
 }
 
