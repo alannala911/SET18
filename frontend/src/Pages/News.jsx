@@ -1,12 +1,18 @@
+
 import { useState } from "react";
-import newsImage from "../assets/bilder til nettsiden/hero-husflid.jpg";
+
+import bilde1 from "../assets/bilder til nettsiden/bilde1.jpg";
+import bilde2 from "../assets/bilder til nettsiden/bilde2.jpg";
+import bilde3 from "../assets/bilder til nettsiden/bilde3.jpg";
+
 import "./News.css";
 
-/* Eksempelnyheter – kan senere erstattes med data fra backend */
+/* Eksempelnyheter */
 const news = [
   {
     id: 1,
     title: "Skaperglede på tvers av generasjoner",
+    image: bilde3,
     category: "Fra laget",
     date: "10. november 2026",
     summary:
@@ -17,6 +23,7 @@ const news = [
   {
     id: 2,
     title: "Tradisjonshåndverk i fokus",
+    image: bilde1,
     category: "Fra laget",
     date: "3. november 2026",
     summary:
@@ -27,6 +34,7 @@ const news = [
   {
     id: 3,
     title: "Et tilbakeblikk på høstens verksteder",
+    image: bilde2,
     category: "Kurs og aktiviteter",
     date: "27. oktober 2026",
     summary:
@@ -37,6 +45,7 @@ const news = [
   {
     id: 4,
     title: "Møteplasser for kreative hender",
+    image: bilde3,
     category: "Kurs og aktiviteter",
     date: "20. oktober 2026",
     summary:
@@ -56,7 +65,7 @@ const categories = [
 function NewsCard({ item, featured = false }) {
   return (
     <article className={featured ? "news-card news-featured" : "news-card"}>
-      <img src={newsImage} alt="Håndarbeid i tekstil" />
+      <img src={item.image} alt={item.title} />
 
       <section className="news-card-content">
         <p className="news-meta">
