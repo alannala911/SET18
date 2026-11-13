@@ -61,11 +61,17 @@ const categories = [
   "Kurs og aktiviteter",
 ];
 
-/* Samme kort brukes til alle nyhetene */
+/* Nyhetskort */
 function NewsCard({ item, featured = false }) {
   return (
-    <article className={featured ? "news-card news-featured" : "news-card"}>
-      <img src={item.image} alt={item.title} />
+    <article
+      className={
+        featured
+          ? "news-card news-featured"
+          : "news-card"
+      }
+    >
+      <img src={item.image} alt="" loading="lazy" />
 
       <section className="news-card-content">
         <p className="news-meta">
@@ -73,6 +79,7 @@ function NewsCard({ item, featured = false }) {
         </p>
 
         <h2>{item.title}</h2>
+
         <p>{item.summary}</p>
 
         <details>
@@ -88,43 +95,70 @@ export default function News() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Alle nyheter");
 
-  /* Viser bare nyheter som passer med søket og kategorien */
+  /* Søker gjennom tittel, ingress og tekst */
   const filteredNews = news.filter((item) => {
-    const matchesSearch = `${item.title} ${item.summary}`
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const searchText = `
+      ${item.title}
+      ${item.summary}
+      ${item.text}
+    `.toLowerCase();
+
+    const matchesSearch = searchText.includes(
+      search.trim().toLowerCase()
+    );
 
     const matchesCategory =
-      category === "Alle nyheter" || item.category === category;
+      category === "Alle nyheter" ||
+      item.category === category;
 
     return matchesSearch && matchesCategory;
   });
 
   return (
     <main className="news-page">
+
+      {/* Introduksjon */}
       <header className="news-intro">
-        <p className="news-label">Fra Østfold Husflidslag</p>
+        <p className="news-label">
+          Fra Østfold Husflidslag
+        </p>
+
         <h1>Nyheter</h1>
-        <p>Små og store nyheter fra husflidsmiljøet i Østfold.</p>
+
+        <p>
+          Små og store nyheter fra husflidsmiljøet i Østfold.
+        </p>
       </header>
 
-      <section className="news-tools" aria-label="Søk og filtrering">
+      {/* Søk og filtrering */}
+      <section
+        className="news-tools"
+        aria-label="Søk og filtrering"
+      >
         <label className="news-search">
           <span>Søk i nyheter</span>
+
           <input
             type="search"
             placeholder="Skriv et søkeord ..."
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
           />
         </label>
 
-        <nav className="news-filters" aria-label="Nyhetskategorier">
+        <nav
+          className="news-filters"
+          aria-label="Nyhetskategorier"
+        >
           {categories.map((name) => (
             <button
               key={name}
               type="button"
-              className={category === name ? "selected" : ""}
+              className={
+                category === name ? "selected" : ""
+              }
               aria-pressed={category === name}
               onClick={() => setCategory(name)}
             >
@@ -134,30 +168,63 @@ export default function News() {
         </nav>
       </section>
 
+      {/* Informasjon om antall nyheter */}
+      <p className="news-count" aria-live="polite">
+        Viser {filteredNews.length} av {news.length} nyheter
+      </p>
+
+      {/* Eksempelinnhold */}
       <p className="news-notice">
         Prototype: Nyhetene nedenfor er eksempelinnhold.
       </p>
 
+      {/* Nyheter */}
       {filteredNews.length > 0 ? (
         <>
-          <NewsCard item={filteredNews[0]} featured />
+          <NewsCard
+            item={filteredNews[0]}
+            featured
+          />
 
           {filteredNews.length > 1 && (
-            <section className="news-more" aria-labelledby="more-news">
-              <h2 id="more-news">Flere nyheter</h2>
+            <section
+              className="news-more"
+              aria-labelledby="more-news"
+            >
+              <h2 id="more-news">
+                Flere nyheter
+              </h2>
 
               <section className="news-grid">
                 {filteredNews.slice(1).map((item) => (
-                  <NewsCard key={item.id} item={item} />
+                  <NewsCard
+                    key={item.id}
+                    item={item}
+                  />
                 ))}
               </section>
             </section>
           )}
         </>
       ) : (
-        <p className="news-empty">
-          Ingen nyheter passer med søket ditt. Prøv et annet søkeord.
-        </p>
+        <div className="news-empty">
+          <h2>Ingen nyheter funnet</h2>
+
+          <p>
+            Ingen nyheter passer med søket ditt.
+            Prøv et annet søkeord eller velg en annen kategori.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setCategory("Alle nyheter");
+            }}
+          >
+            Vis alle nyheter
+          </button>
+        </div>
       )}
     </main>
   );

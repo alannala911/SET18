@@ -1,3 +1,4 @@
+
 /* Hele nyhetssiden */
 
 .news-page {
@@ -73,6 +74,11 @@
   font: inherit;
 }
 
+.news-search input:focus-visible {
+  outline: 3px solid #852b3b;
+  outline-offset: 3px;
+}
+
 .news-filters {
   display: flex;
   flex-wrap: wrap;
@@ -87,12 +93,26 @@
   background: white;
   font: inherit;
   cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.news-filters button:hover {
+  border-color: #852b3b;
+  color: #852b3b;
 }
 
 .news-filters button.selected {
   border-color: #b52d4d;
   color: white;
   background: #b52d4d;
+}
+
+/* Antall nyheter */
+
+.news-count {
+  margin: 15px 0 5px;
+  color: #555;
+  font-size: 14px;
 }
 
 .news-notice {
@@ -108,6 +128,11 @@
   border: 1px solid #ddd;
   border-radius: 12px;
   background: white;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.news-card:hover {
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
 }
 
 .news-card > img {
@@ -134,17 +159,32 @@
 .news-page .news-meta {
   color: #852b3b;
   font-size: 14px;
+  font-weight: 600;
 }
+
+/* Les mer */
 
 .news-card summary {
   width: fit-content;
   margin-top: 18px;
-  color: #852b3b;
+  padding: 10px 18px;
+  border-radius: 8px;
+  color: white;
+  background: #b52d4d;
   font-weight: bold;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
-/* Den fremhevede nyheten */
+.news-card summary:hover {
+  background: #852b3b;
+}
+
+.news-card details[open] summary {
+  margin-bottom: 12px;
+}
+
+/* Fremhevet nyhet */
 
 .news-page .news-featured {
   display: grid;
@@ -161,24 +201,14 @@
   font-size: 32px;
 }
 
-.news-featured summary {
-  padding: 10px 18px;
-  border-radius: 8px;
-  color: white;
-  background: #b52d4d;
-}
-
-.news-featured summary:hover {
-  background: #852b3b;
-}
-
-/* De mindre nyhetene */
+/* Flere nyheter */
 
 .news-more {
   margin-top: 30px;
 }
 
 .news-more > h2 {
+  margin-bottom: 18px;
   font-size: 28px;
 }
 
@@ -186,7 +216,10 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
+  align-items: start;
 }
+
+/* Ingen treff */
 
 .news-empty {
   padding: 30px;
@@ -194,7 +227,26 @@
   background: #f8edef;
 }
 
-/* Synlig markering ved bruk av tastatur */
+.news-empty h2 {
+  margin-top: 0;
+}
+
+.news-empty button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  background: #b52d4d;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.news-empty button:hover {
+  background: #852b3b;
+}
+
+/* Tastaturtilgjengelighet */
 
 .news-page input:focus-visible,
 .news-page button:focus-visible,
@@ -203,7 +255,7 @@
   outline-offset: 4px;
 }
 
-/* Mindre skjermer */
+/* Nettbrett */
 
 @media (max-width: 1100px) {
   .news-grid {
@@ -211,12 +263,21 @@
   }
 }
 
+/* Mobil */
+
 @media (max-width: 750px) {
   .news-page {
     padding: 20px;
   }
 
-  .news-page .news-featured,
+  .news-intro {
+    padding: 24px;
+  }
+
+  .news-page .news-featured {
+    grid-template-columns: 1fr;
+  }
+
   .news-grid {
     grid-template-columns: 1fr;
   }
@@ -228,5 +289,43 @@
 
   .news-featured h2 {
     font-size: 26px;
+  }
+
+  .news-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .news-search {
+    min-width: 0;
+  }
+
+  .news-filters {
+    gap: 8px;
+  }
+
+  .news-filters button {
+    padding: 10px 13px;
+    font-size: 14px;
+  }
+}
+
+/* Små mobilskjermer */
+
+@media (max-width: 400px) {
+  .news-page {
+    padding: 14px;
+  }
+
+  .news-intro {
+    padding: 20px;
+  }
+
+  .news-card-content {
+    padding: 18px;
+  }
+
+  .news-card-content h2 {
+    font-size: 21px;
   }
 }
