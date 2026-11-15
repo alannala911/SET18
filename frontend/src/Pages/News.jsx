@@ -1,262 +1,273 @@
-
-import { useState } from "react";
-
-import bilde1 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde1.jpg";
-import bilde2 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde2.jpg";
-import bilde3 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde3.jpg";
-
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { apiRequest } from "./api.js";
+import { NewsCard } from "./NewsCard.jsx";
 import "./News.css";
 
-/* Eksempelnyheter */
-const news = [
-  {
-    id: 1,
-    title: "Skaperglede på tvers av generasjoner",
-    image: bilde3,
-    category: "Fra laget",
-    date: "10. november 2026",
-    summary:
-      "Husflid samler mennesker i alle aldre gjennom håndverk og fellesskap.",
-    text:
-      "Når vi møtes rundt håndarbeidet, kan vi dele teknikker, erfaringer og ideer. Både nybegynnere og erfarne deltakere kan bidra med noe og lære av hverandre.",
-  },
-  {
-    id: 2,
-    title: "Tradisjonshåndverk i fokus",
-    image: bilde1,
-    category: "Fra laget",
-    date: "3. november 2026",
-    summary:
-      "Gamle teknikker får nytt liv når kunnskapen deles videre.",
-    text:
-      "Vi ønsker å skape interesse for tradisjonelt håndverk. Gjennom praktiske aktiviteter kan flere bli kjent med materialer og teknikker som har blitt brukt gjennom generasjoner.",
-  },
-  {
-    id: 3,
-    title: "Et tilbakeblikk på høstens verksteder",
-    image: bilde2,
-    category: "Kurs og aktiviteter",
-    date: "27. oktober 2026",
-    summary:
-      "Kreative verksteder gir rom for å prøve, lære og skape sammen.",
-    text:
-      "På et verksted kan deltakerne utforske nye teknikker og få hjelp underveis. Det viktigste er ikke å kunne alt fra før, men å ha lyst til å prøve.",
-  },
-  {
-    id: 4,
-    title: "Møteplasser for kreative hender",
-    image: bilde3,
-    category: "Kurs og aktiviteter",
-    date: "20. oktober 2026",
-    summary:
-      "Håndarbeid gir gode møteplasser for læring og nye bekjentskaper.",
-    text:
-      "Ta med et prosjekt du holder på med, eller bli inspirert til å starte på noe nytt. En felles interesse for håndverk kan være starten på både samarbeid og vennskap.",
-  },
-];
-
-const categories = [
-  "Alle nyheter",
-  "Fra laget",
-  "Kurs og aktiviteter",
-];
-
-/* Nyhetskort */
-function NewsCard({ item, featured = false }) {
-  return (
-    <article
-      className={
-        featured
-          ? "news-card news-featured"
-          : "news-card"
-      }
-    >
-      <img
-        src={item.image}
-        alt=""
-        loading="lazy"
-      />
-
-      <section className="news-card-content">
-
-        <p className="news-meta">
-          {item.category} · {item.date}
-        </p>
-
-        <h2>{item.title}</h2>
-
-        <p className="news-summary">
-          {item.summary}
-        </p>
-
-        <details>
-          <summary>Les mer</summary>
-
-          <p className="news-text">
-            {item.text}
-          </p>
-        </details>
-
-      </section>
-    </article>
-  );
-}
+const allCategories = "Alle nyheter";
 
 export default function News() {
+  const [newsList, setNewsList] = useState([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("Alle nyheter");
+  const [category, setCategory] = useState(allCategories);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isEditingNews, setIsEditingNews] = useState(false);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [newsLoadError, setNewsLoadError] = useState("");
+  const [newsActionError, setNewsActionError] = useState("");
+  const [newsPendingArchive, setNewsPendingArchive] = useState(null);
+  const [isArchivingNews, setIsArchivingNews] = useState(false);
 
-  /* Søker gjennom tittel, ingress og tekst */
-  const filteredNews = news.filter((item) => {
+  const loadNews = useCallback(async () => {
+    let isAdmin = false;
+    let sessionErrorMessage = "";
+    try {
+      await apiRequest("/auth/me");
+      isAdmin = true;
+    } catch (sessionError) {
+      if (sessionError.status !== 401) {
+        sessionErrorMessage = sessionError.message;
+      }
+    }
 
-    const searchText = `
-      ${item.title}
-      ${item.summary}
-      ${item.text}
-    `.toLowerCase();
-
-    const matchesSearch = searchText.includes(
-      search.trim().toLowerCase()
+    const loadedNews = await apiRequest(
+      isAdmin ? "/news?scope=all" : "/news",
     );
+    if (!Array.isArray(loadedNews)) {
+      throw new Error("Nyhetslisten har et ugyldig format.");
+    }
+    return { loadedNews, isAdmin, sessionErrorMessage };
+  }, []);
 
-    const matchesCategory =
-      category === "Alle nyheter" ||
-      item.category === category;
+  useEffect(() => {
+    let isComponentMounted = true;
+    let requestSequence = 0;
+    const refreshNews = () => {
+      const sequence = ++requestSequence;
+      loadNews()
+        .then(({ loadedNews, isAdmin, sessionErrorMessage }) => {
+          if (!isComponentMounted || sequence !== requestSequence) return;
+          setNewsLoadError("");
+          setNewsActionError(sessionErrorMessage);
+          setIsAdminAuthenticated(isAdmin);
+          setNewsList(loadedNews);
+        })
+        .catch((loadError) => {
+          if (isComponentMounted && sequence === requestSequence) {
+            setNewsLoadError(loadError.message);
+          }
+        })
+        .finally(() => {
+          if (isComponentMounted && sequence === requestSequence) {
+            setIsLoadingNews(false);
+          }
+        });
+    };
 
-    return matchesSearch && matchesCategory;
+    refreshNews();
+    window.addEventListener("set18-auth-change", refreshNews);
+    return () => {
+      isComponentMounted = false;
+      window.removeEventListener("set18-auth-change", refreshNews);
+    };
+  }, [loadNews]);
+
+  const sortedNews = [...newsList].sort((first, second) =>
+    second.date.localeCompare(first.date),
+  );
+  const categoryOptions = [
+    allCategories,
+    ...new Set(sortedNews.map((item) => item.category)),
+  ];
+  const searchTerm = search.trim().toLocaleLowerCase("nb-NO");
+  const filteredNews = sortedNews.filter((item) => {
+    const searchableText =
+      `${item.title} ${item.summary} ${item.text} ${item.category}`
+        .toLocaleLowerCase("nb-NO");
+    return (
+      searchableText.includes(searchTerm) &&
+      (category === allCategories || item.category === category)
+    );
   });
+
+  function beginNewsArchive(item) {
+    setNewsActionError("");
+    setNewsPendingArchive(item);
+  }
+
+  async function archiveNews() {
+    if (!newsPendingArchive) return;
+    setIsArchivingNews(true);
+    setNewsActionError("");
+    try {
+      await apiRequest(`/news/${encodeURIComponent(newsPendingArchive.id)}`, {
+        method: "DELETE",
+      });
+      setNewsList((currentNews) =>
+        currentNews.map((item) =>
+          item.id === newsPendingArchive.id
+            ? { ...item, status: "archived" }
+            : item,
+        ),
+      );
+      setNewsPendingArchive(null);
+    } catch (archiveError) {
+      setNewsActionError(archiveError.message);
+      setNewsPendingArchive(null);
+    } finally {
+      setIsArchivingNews(false);
+    }
+  }
 
   return (
     <main className="news-page">
-
-      {/* Introduksjon */}
       <header className="news-intro">
-
-        <p className="news-label">
-          Fra Østfold Husflidslag
-        </p>
-
+        <p className="news-label">Fra Østfold Husflidslag</p>
         <h1>Nyheter</h1>
-
-        <p>
-          Små og store nyheter fra husflidsmiljøet i Østfold.
-        </p>
-
+        <p>Små og store nyheter fra husflidsmiljøet i Østfold.</p>
       </header>
 
-      {/* Søk og filtrering */}
-      <section
-        className="news-tools"
-        aria-label="Søk og filtrering"
-      >
-
+      <section className="news-tools" aria-label="Søk og filtrering">
         <label className="news-search">
-
           <span>Søk i nyheter</span>
-
           <input
             type="search"
             placeholder="Skriv et søkeord ..."
             value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
+            onChange={(event) => setSearch(event.target.value)}
           />
-
         </label>
-
-        <nav
-          className="news-filters"
-          aria-label="Nyhetskategorier"
-        >
-
-          {categories.map((name) => (
-
+        <nav className="news-filters" aria-label="Nyhetskategorier">
+          {categoryOptions.map((name) => (
             <button
               key={name}
               type="button"
-              className={
-                category === name ? "selected" : ""
-              }
+              className={category === name ? "selected" : ""}
               aria-pressed={category === name}
               onClick={() => setCategory(name)}
             >
               {name}
             </button>
-
           ))}
-
         </nav>
-
       </section>
 
-      {/* Antall nyheter */}
-      <p className="news-count" aria-live="polite">
-        Viser {filteredNews.length} av {news.length} nyheter
-      </p>
+      <section className="news-results" aria-labelledby="news-results-heading">
+        <header className="news-results-heading">
+          <div>
+            <p className="news-label">
+              {isAdminAuthenticated ? "Administrasjon" : "Siste nytt"}
+            </p>
+            <h2 id="news-results-heading">
+              {isAdminAuthenticated ? "Nyhetsarkiv" : "Aktuelt"}
+            </h2>
+          </div>
+          <span className="news-count" aria-live="polite">
+            Viser {filteredNews.length} av {newsList.length} nyheter
+          </span>
+        </header>
 
-      {/* Eksempelinnhold */}
-      <p className="news-notice">
-        Prototype: Nyhetene nedenfor er eksempelinnhold.
-      </p>
+        {isAdminAuthenticated && (
+          <div className="news-admin-actions">
+            <button
+              type="button"
+              onClick={() => setIsEditingNews((currentlyEditing) => !currentlyEditing)}
+            >
+              {isEditingNews ? "Avslutt redigering" : "Rediger nyheter"}
+            </button>
+            <Link to="/nyheter/ny">Legg til nyhet</Link>
+          </div>
+        )}
 
-      {/* Nyheter */}
-      {filteredNews.length > 0 ? (
-        <>
-          {/* Første nyhet - fremhevet */}
-          <NewsCard
-            item={filteredNews[0]}
-            featured
-          />
+        {newsActionError && (
+          <p className="news-error" role="alert">{newsActionError}</p>
+        )}
+        {newsLoadError && (
+          <p className="news-error" role="alert">{newsLoadError}</p>
+        )}
 
-          {/* Flere nyheter */}
-          {filteredNews.length > 1 && (
-            <section className="news-more">
-
-              <h2>Flere nyheter</h2>
-
-              <section className="news-grid">
-
-                {filteredNews.slice(1).map((item) => (
-
-                  <NewsCard
-                    key={item.id}
-                    item={item}
-                  />
-
-                ))}
-
+        {isLoadingNews ? (
+          <p className="news-empty">Laster nyheter …</p>
+        ) : filteredNews.length > 0 ? (
+          <>
+            <NewsCard
+              item={filteredNews[0]}
+              featured
+              showEditControls={isEditingNews && isAdminAuthenticated}
+              onArchive={beginNewsArchive}
+            />
+            {filteredNews.length > 1 && (
+              <section className="news-more">
+                <h2>Flere nyheter</h2>
+                <section className="news-grid" aria-label="Flere nyheter">
+                  {filteredNews.slice(1).map((item) => (
+                    <NewsCard
+                      key={item.id}
+                      item={item}
+                      showEditControls={isEditingNews && isAdminAuthenticated}
+                      onArchive={beginNewsArchive}
+                    />
+                  ))}
+                </section>
               </section>
+            )}
+          </>
+        ) : (
+          <div className="news-empty">
+            <h2>{newsList.length ? "Ingen nyheter funnet" : "Ingen nyheter ennå"}</h2>
+            <p>
+              {newsList.length
+                ? "Ingen nyheter passer med søket ditt. Prøv et annet søkeord eller en annen kategori."
+                : "Det er ingen publiserte nyheter å vise akkurat nå."}
+            </p>
+            {newsList.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setCategory(allCategories);
+                }}
+              >
+                Vis alle nyheter
+              </button>
+            )}
+          </div>
+        )}
+      </section>
 
-            </section>
-          )}
-        </>
-      ) : (
-
-        /* Hvis ingen nyheter passer med søket */
-        <div className="news-empty">
-
-          <h2>Ingen nyheter funnet</h2>
-
-          <p>
-            Ingen nyheter passer med søket ditt.
-            Prøv et annet søkeord eller velg en annen kategori.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSearch("");
-              setCategory("Alle nyheter");
-            }}
+      {newsPendingArchive && (
+        <div className="news-dialog-backdrop">
+          <section
+            className="news-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="news-archive-title"
           >
-            Vis alle nyheter
-          </button>
-
+            <h2 id="news-archive-title">Arkivere nyheten?</h2>
+            <p>
+              «{newsPendingArchive.title}» skjules for besøkende. Du kan publisere
+              den igjen ved å endre status.
+            </p>
+            <div className="news-editor-actions">
+              <button
+                type="button"
+                className="news-editor-secondary"
+                onClick={() => setNewsPendingArchive(null)}
+                disabled={isArchivingNews}
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                onClick={archiveNews}
+                disabled={isArchivingNews}
+              >
+                {isArchivingNews ? "Arkiverer …" : "Arkiver nyhet"}
+              </button>
+            </div>
+          </section>
         </div>
-
       )}
-
     </main>
   );
 }

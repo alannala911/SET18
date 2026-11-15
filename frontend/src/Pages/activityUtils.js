@@ -31,6 +31,19 @@ export const activityPriceFormatter = new Intl.NumberFormat("nb-NO", {
   currency: "NOK",
 });
 
+export function getDiscountedPrice(activity, ticketType, memberType) {
+  const discount = activity.discount;
+  const today = new Date().toISOString().slice(0, 10);
+  const appliesToMember = discount?.memberTypes.includes(memberType);
+  const isWithinDateRange = (!discount?.startDate || today >= discount.startDate) &&
+    (!discount?.endDate || today <= discount.endDate);
+  if (!appliesToMember || !isWithinDateRange) return ticketType.price;
+  const discountAmount = discount.type === "percent"
+    ? ticketType.price * discount.value / 100
+    : discount.value;
+  return Math.max(0, Math.round((ticketType.price - discountAmount) * 100) / 100);
+}
+
 export function formatActivityDate(dateValue) {
   const activityDate = new Date(`${dateValue}T00:00:00`);
   return Number.isNaN(activityDate.getTime())
@@ -77,56 +90,11 @@ export function draftToDiscount({ enabled, type, value, memberTypes, hasPeriod, 
     : null;
 }
 
-export function getActivityLowestPrice(activity) {
-  const prices = (activity.ticketTypes || []).map((ticketType) => Number(ticketType.price)).filter(Number.isFinite);
-  return prices.length ? Math.min(...prices) : null;
-}
-
-export function getActivityStartTime(activity) {
-  const timeMatch = activity.time?.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
-  return timeMatch ? Number(timeMatch[1]) * 60 + Number(timeMatch[2]) : null;
-}
-
 export function formatActivityDuration(durationMinutes) {
   if (!Number.isSafeInteger(durationMinutes) || durationMinutes < 1) return "";
   const hours = Math.floor(durationMinutes / 60);
   const minutes = durationMinutes % 60;
   return [hours ? `${hours} t` : "", minutes ? `${minutes} min` : ""].filter(Boolean).join(" ");
-}
-
-export function getTodayDate() {
-  const today = new Date();
-  const offset = today.getTimezoneOffset() * 60000;
-  return new Date(today.getTime() - offset).toISOString().slice(0, 10);
-}
-
-export function addCalendarDays(dateValue, numberOfDays) {
-  const date = new Date(`${dateValue}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + numberOfDays);
-  return date.toISOString().slice(0, 10);
-}
-
-export function compareActivities(first, second, sortBy, sortDirection) {
-  const firstValue = {
-    date: first.date,
-    time: getActivityStartTime(first),
-    duration: first.durationMinutes,
-    location: first.location?.toLocaleLowerCase("nb-NO"),
-    price: getActivityLowestPrice(first),
-  }[sortBy];
-  const secondValue = {
-    date: second.date,
-    time: getActivityStartTime(second),
-    duration: second.durationMinutes,
-    location: second.location?.toLocaleLowerCase("nb-NO"),
-    price: getActivityLowestPrice(second),
-  }[sortBy];
-  if (firstValue == null) return secondValue == null ? 0 : 1;
-  if (secondValue == null) return -1;
-  const comparison = typeof firstValue === "string"
-    ? firstValue.localeCompare(secondValue, "nb-NO")
-    : firstValue - secondValue;
-  return sortDirection === "descending" ? -comparison : comparison;
 }
 
 export function getActivityImageSource(imageUrl) {

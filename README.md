@@ -41,7 +41,24 @@ Medlemsregistrering ligger på `/medlemskap`. Medlems- og administratorinnloggin
 
 Admin kan aktivere og konfigurere standardskjemaene, legge til egne felt og innholdsbokser i dem, og lage helt nye skjemaer fra blankt. Innsendinger fra egendefinerte skjemaer lagres som søknader for administratorbehandling; de oppretter ikke medlemskonto automatisk.
 
-Dette er en lokal utviklingsversjon. Ikke bruk ekte personopplysninger. Betaling, e-postutsending og adresseoppslag er ikke integrert. Adressefeltene støtter nettleserens innebygde autofyll når nettleseren har lagret adresser; dette er ikke et adresseoppslag eller en verifisering. Se [backend/README.md](./backend/README.md) for lagring, sikkerhetsbegrensninger og API-detaljer.
+Egendefinerte skjemaer kan aktiveres og deaktiveres under «Aktive skjemaer». De må ha minst ett inndatafelt før de kan aktiveres.
+
+Søkesiden viser treff i offentlig sideinnhold, publiserte kurs, aktiviteter og nyheter samt tilgjengelig kontakt- og medlemskapsinformasjon. Treffene grupperes etter side, og søketeksten markeres. Utkast, arkivert innhold og administrasjonsdata tas ikke med, heller ikke når en administrator søker.
+Tekst på statiske sider vedlikeholdes i søkeindeksen og må oppdateres der når sideteksten endres.
+
+I skjemaet for mindreårige brukes samme innstilling for overskrift og hjelpetekst for alle foreldre. Foreldernummer legges til automatisk.
+
+Administratorer kan også legge til, redigere og forhåndsvise nyheter fra nyhetssiden. Nyheter kan lagres som utkast, publiseres eller arkiveres, og publiserte nyheter vises for besøkende.
+
+Besøkende kan legge publiserte kurs og aktivitetsbilletter i handlekurven, som lagres i nettleseren. Aktivitetsbilletter kan legges til uten innlogging, men medlemsinnlogging kreves før bestilling. «Bestill» åpner betalingssiden, men betaling, plassreservasjon og bekreftet bestilling er ikke tilgjengelig ennå.
+Aktiviteter uten billettype og pris kan legges i handlekurven, men kan ikke bestilles før billettype og pris er opprettet og en billett er valgt.
+
+Publiserte kurs og aktiviteter arkiveres automatisk dagen etter datoen deres, etter norsk tid. Arkivene vises bare for administratorer; tidligere aktivitetsbestillinger beholdes. For å publisere et arkivert kurs eller en aktivitet på nytt må administrator velge dagens dato eller en senere dato og publisert status.
+På kurs- og aktivitetssidene kan man filtrere etter tidsperiode, angi et eget datointervall under «Avansert valg» og sortere resultatene. Varighet for kurs beregnes bare når tiden er angitt som et tydelig tidsrom på samme dag.
+
+På kontaktsiden kan administratorer redigere felles kontaktinformasjon og kontaktpersonene. «Send oss en melding» lagrer henvendelser i en administratorinnboks på kontaktsiden. Meldingen sendes ikke automatisk på e-post; administratoren kan svare ved å åpne avsenderens e-postlenke.
+
+Dette er en lokal utviklingsversjon. Ikke bruk ekte personopplysninger. Betaling, automatisk e-postutsending fra kontaktskjemaet og adresseoppslag er ikke integrert. Adressefeltene støtter nettleserens innebygde autofyll når nettleseren har lagret adresser; dette er ikke et adresseoppslag eller en verifisering. Se [backend/README.md](./backend/README.md) for lagring, sikkerhetsbegrensninger og API-detaljer.
 
 ## Ressurser
 - Github branch organisering: https://dev.to/hardkoded/how-to-organize-your-git-branches-4dci

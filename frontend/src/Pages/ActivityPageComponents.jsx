@@ -22,72 +22,6 @@ export function ActivityHero() {
   );
 }
 
-export function ActivityControls({
-  periodFilter,
-  sortBy,
-  sortDirection,
-  isAdvancedOpen,
-  customStartDate,
-  customEndDate,
-  onPeriodChange,
-  onSortByChange,
-  onSortDirectionChange,
-  onAdvancedToggle,
-  onStartDateChange,
-  onEndDateChange,
-}) {
-  const filters = [
-    ["Tidsperiode", periodFilter, onPeriodChange, [
-      ["all", "Alle perioder"], ["today", "I dag"],
-      ["next-seven-days", "Neste 7 dager"], ["next-thirty-days", "Neste 30 dager"],
-    ]],
-    ["Sorter etter", sortBy, onSortByChange, [
-      ["date", "Dato"], ["time", "Tid på dagen"], ["duration", "Varighet"],
-      ["location", "Sted"], ["price", "Pris (laveste billett)"],
-    ]],
-    ["Rekkefølge", sortDirection, onSortDirectionChange, [
-      ["ascending", "Stigende"], ["descending", "Synkende"],
-    ]],
-  ];
-  const dates = [
-    ["Fra dato", customStartDate, onStartDateChange],
-    ["Til dato", customEndDate, onEndDateChange],
-  ];
-
-  return (
-    <section className="activity-controls" aria-label="Filtrer og sorter aktiviteter">
-      {filters.map(([label, value, onChange, options]) => (
-        <label key={label}>
-          <span>{label}</span>
-          <select value={value} onChange={(event) => onChange(event.target.value)}>
-            {options.map(([optionValue, optionLabel]) => (
-              <option key={optionValue} value={optionValue}>{optionLabel}</option>
-            ))}
-          </select>
-        </label>
-      ))}
-      <button
-        type="button"
-        className="activity-advanced-toggle"
-        aria-expanded={isAdvancedOpen}
-        onClick={onAdvancedToggle}
-      >
-        Avansert valg
-      </button>
-      {isAdvancedOpen && (
-        <div className="activity-date-range">
-          {dates.map(([label, value, onChange]) => (
-            <label key={label}>
-              <span>{label}</span>
-              <input type="date" value={value} onChange={(event) => onChange(event.target.value)} />
-            </label>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function ActivityResults({
   activityLoadError,
   activityActionError,
@@ -101,7 +35,6 @@ export function ActivityResults({
   member,
   isAdmin,
   onRemove,
-  onPurchased,
   onPageChange,
 }) {
   const emptyMessage = isLoading
@@ -129,7 +62,6 @@ export function ActivityResults({
                 member={member}
                 isAdmin={isAdmin}
                 onRemove={onRemove}
-                onPurchased={onPurchased}
               />
             ))}
           </section>
@@ -155,7 +87,7 @@ function ActivityErrors({ loadError, actionError }) {
   );
 }
 
-function ActivityListItem({ activity, index, showEditControls, member, isAdmin, onRemove, onPurchased }) {
+export function ActivityListItem({ activity, index, showEditControls, member, isAdmin, onRemove }) {
   return (
     <div className="activity-card-wrapper">
       {showEditControls && (
@@ -171,20 +103,20 @@ function ActivityListItem({ activity, index, showEditControls, member, isAdmin, 
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
             </svg>
           </Link>
-          <button
+          {onRemove && <button
             className="activity-remove-button"
             type="button"
             aria-label={`Fjern ${activity.title}`}
             onClick={() => onRemove(activity)}
           >
             ×
-          </button>
+          </button>}
         </>
       )}
       <ActivityCard
         activityData={activity}
         activityIndex={index}
-        ticketSales={{ member, isAdmin, onPurchased }}
+        ticketSales={{ member, isAdmin }}
       />
     </div>
   );

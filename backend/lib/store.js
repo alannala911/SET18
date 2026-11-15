@@ -5,6 +5,8 @@ import mysql from "mysql2/promise";
 import {
   activities as defaultActivities,
   courses as defaultCourses,
+  defaultContact,
+  news as defaultNews,
 } from "../data/content.js";
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || "./data");
@@ -151,12 +153,27 @@ function defaultOptions() {
   };
 }
 
+function migrateNewsItem(item) {
+  const { excerpt, body, publishedAt, ...newsData } = item;
+  return {
+    ...newsData,
+    category: item.category || "Fra laget",
+    summary: item.summary || excerpt || "",
+    text: item.text || body || "",
+    date: item.date || publishedAt || "",
+    status: item.status || "published",
+  };
+}
+
 const createInitialState = () => ({
   members: [],
   applications: [],
   sessions: [],
+  contactSettings: structuredClone(defaultContact),
+  contactMessages: [],
   activities: structuredClone(defaultActivities),
   courses: structuredClone(defaultCourses),
+  news: structuredClone(defaultNews).map(migrateNewsItem),
   config: {
     schemaVersion: 3,
     membershipTypes: { regular: true, minor: true, gift: true, craft: true },
@@ -322,6 +339,23 @@ function migrateStore(state) {
     state.courses = structuredClone(defaultCourses);
   if (!Array.isArray(state.courses)) {
     throw new Error("Kursene i søknadsdatabasen har et ugyldig format");
+  }
+  if (state.news === undefined) {
+    state.news = structuredClone(defaultNews).map(migrateNewsItem);
+  }
+  if (!Array.isArray(state.news)) {
+    throw new Error("Nyhetene i søknadsdatabasen har et ugyldig format");
+  }
+  state.news = state.news.map(migrateNewsItem);
+  state.contactSettings ??= structuredClone(defaultContact);
+  state.contactMessages ??= [];
+  if (
+    !state.contactSettings ||
+    typeof state.contactSettings !== "object" ||
+    !Array.isArray(state.contactSettings.people) ||
+    !Array.isArray(state.contactMessages)
+  ) {
+    throw new Error("Kontaktopplysningene i søknadsdatabasen har et ugyldig format");
   }
 
   const defaults = createInitialState().config;

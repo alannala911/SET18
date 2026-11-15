@@ -8,6 +8,9 @@ import {
 } from "react-icons/fi";
 import { apiRequest } from "./api.js";
 import { CourseCard } from "./CourseCard.jsx";
+import { FilterControls } from "./FilterControls.jsx";
+import { getTodayDate } from "./dateSortFilters.js";
+import { filterCourses } from "./courseFilters.js";
 
 const categories = [
   { name: "Alle kurs", symbol: "✦" },
@@ -22,6 +25,12 @@ export default function Courses() {
   const [courseList, setCourseList] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Alle kurs");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("original");
+  const [sortDirection, setSortDirection] = useState("ascending");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [isEditingCourses, setIsEditingCourses] = useState(false);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
@@ -72,33 +81,39 @@ export default function Courses() {
     };
 
     refreshCourses();
-    window.addEventListener("set18-auth-change", refreshCourses);
+    function sessionChanged() {
+      setIsAdminAuthenticated(false);
+      setCourseList((current) => current.filter((course) => course.status === "published"));
+      refreshCourses();
+    }
+    window.addEventListener("set18-auth-change", sessionChanged);
     return () => {
       isComponentMounted = false;
-      window.removeEventListener("set18-auth-change", refreshCourses);
+      window.removeEventListener("set18-auth-change", sessionChanged);
     };
   }, [loadCourses]);
 
+  const activeCourses = courseList.filter((course) => course.status !== "archived" && (isAdminAuthenticated || course.status === "published"));
+  const archivedCourses = isAdminAuthenticated ? courseList.filter((course) => course.status === "archived") : [];
   const categoryOptions = [
     ...categories,
-    ...[...new Set(courseList.map((course) => course.category))]
+    ...[...new Set(activeCourses.map((course) => course.category))]
       .filter((name) => !categories.some((category) => category.name === name))
       .map((name) => ({ name, symbol: "✦" })),
   ];
 
-  const filteredCourses = courseList.filter((course) => {
-    const searchTerm = search.toLowerCase();
-    const matchesSearch =
-      course.title.toLowerCase().includes(searchTerm) ||
-      course.description.toLowerCase().includes(searchTerm) ||
-      course.place.toLowerCase().includes(searchTerm);
-
-    const matchesCategory =
-      selectedCategory === "Alle kurs" ||
-      course.category === selectedCategory;
-
-    return matchesSearch && matchesCategory;
+  const filteredCourses = filterCourses(activeCourses, {
+    search, category: selectedCategory, period: periodFilter,
+    startDate: customStartDate, endDate: customEndDate, today: getTodayDate(), sortBy, sortDirection,
   });
+
+  function toggleAdvancedOptions() {
+    if (isAdvancedOpen) {
+      setCustomStartDate("");
+      setCustomEndDate("");
+    }
+    setIsAdvancedOpen(!isAdvancedOpen);
+  }
 
   function toggleCourseEditing() {
     setCourseActionError("");
@@ -223,6 +238,29 @@ export default function Courses() {
         </label>
       </section>
 
+      <div className="course-advanced-filters">
+        <FilterControls
+          label="Filtrer og sorter kurs"
+          sortOptions={[
+            ["original", "Som oppført"], ["date", "Dato"], ["time", "Tid på dagen"],
+            ["duration", "Varighet"], ["location", "Sted"], ["price", "Pris"],
+          ]}
+          periodFilter={periodFilter}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          isAdvancedOpen={isAdvancedOpen}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+          onPeriodChange={setPeriodFilter}
+          onSortByChange={setSortBy}
+          onSortDirectionChange={setSortDirection}
+          onAdvancedToggle={toggleAdvancedOptions}
+          onStartDateChange={setCustomStartDate}
+          onEndDateChange={setCustomEndDate}
+        />
+        {sortBy === "duration" && <p>Varighet beregnes fra tidsrom på samme dag. Kurs uten et tydelig tidsrom vises sist.</p>}
+      </div>
+
       {/* Kursoversikt */}
       <section className="course-results" id="course-list">
         <header>
@@ -270,12 +308,26 @@ export default function Courses() {
           </section>
         ) : (
           <p className="no-courses">
-            {courseList.length === 0 && !courseLoadError
+            {activeCourses.length === 0 && !courseLoadError
               ? "Det er ingen kommende kurs å vise."
               : "Vi fant ingen kurs som passer med søket ditt."}
           </p>
         )}
       </section>
+
+      {isAdminAuthenticated && !isLoadingCourses && (
+        <section className="course-results course-archive" aria-labelledby="course-archive-title">
+          <h2 id="course-archive-title">Arkiv for kurs</h2>
+          <p>Arkiverte kurs er bare synlige for administratorer.</p>
+          {archivedCourses.length === 0
+            ? <p>Ingen arkiverte kurs.</p>
+            : <section className="course-grid" aria-label="Arkiverte kurs">
+              {archivedCourses.map((course) => (
+                <CourseCard key={course.id} course={course} showEditControls />
+              ))}
+            </section>}
+        </section>
+      )}
 
       {coursePendingRemoval && (
         <div className="course-dialog-backdrop">

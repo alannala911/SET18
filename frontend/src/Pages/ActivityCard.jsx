@@ -1,4 +1,7 @@
 import { ActivityParticipants, TicketPurchase } from "./ActivityTickets.jsx";
+import { useState } from "react";
+import { useCart } from "./cartContext.js";
+import "./ContentStatus.css";
 import {
   activityPriceFormatter,
   activityStatusOptions,
@@ -15,6 +18,8 @@ import {
 } from "./activityUtils.js";
 
 export function ActivityCard({ activityData, activityIndex = 0, ticketSales }) {
+  const { add, error } = useCart();
+  const [added, setAdded] = useState(false);
   const decoration = knownActivityDecorations[activityData.id] || {
     emoji: "✣",
     color: fallbackActivityColors[activityIndex % fallbackActivityColors.length],
@@ -33,12 +38,17 @@ export function ActivityCard({ activityData, activityIndex = 0, ticketSales }) {
       <section className="activity-content">
         <p className="activity-category">{activityData.category || "Aktivitet"}</p>
         {activityData.status && activityData.status !== "published" && (
-          <p className="activity-status">{activityStatusOptions.find(([status]) => status === activityData.status)?.[1]}</p>
+          <p className="content-status">{activityStatusOptions.find(([status]) => status === activityData.status)?.[1]}</p>
         )}
         <h3>{activityData.title}</h3>
-        {activityData.description?.includes("<")
-          ? <div className="activity-description" dangerouslySetInnerHTML={{ __html: activityData.description }} />
-          : <p>{activityData.description}</p>}
+        <details className="activity-details">
+          <summary>Les mer om aktiviteten</summary>
+          {activityData.description
+            ? activityData.description.includes("<")
+              ? <div className="activity-description" dangerouslySetInnerHTML={{ __html: activityData.description }} />
+              : <p className="activity-description">{activityData.description}</p>
+            : <p className="activity-description">Ingen nærmere beskrivelse er lagt til.</p>}
+        </details>
         {discount && (
           <p className="activity-discount">
             <strong>Rabatt: {getDiscountAmountText(discount)}</strong>
@@ -87,17 +97,27 @@ export function ActivityCard({ activityData, activityIndex = 0, ticketSales }) {
                     activity={activityData}
                     ticketType={ticketType}
                     member={ticketSales.member}
-                    onPurchased={ticketSales.onPurchased}
                   />
                 )}
               </article>
             ))}
           </section>
         )}
+        {ticketSales && (activityData.status ?? "published") === "published" &&
+          !activityData.ticketTypes?.length && (
+            <div className="activity-cart">
+              {activityData.date < new Date().toISOString().slice(0, 10)
+                ? <p>Aktiviteten er allerede avholdt.</p>
+                : <>
+                  <p>Pris og billettype er ikke oppgitt. Aktiviteten kan ikke bestilles før dette er lagt til.</p>
+                  <button type="button" className="activity-cart-button" onClick={() => setAdded(add({ type: "activity", id: activityData.id, quantity: 1 }))}>Legg i handlekurv</button>
+                  {added && <p role="status">Aktiviteten er lagt i handlekurven.</p>}
+                  {error && <p role="alert">{error}</p>}
+                </>}
+            </div>
+          )}
         {ticketSales?.isAdmin && <ActivityParticipants activityId={activityData.id} />}
-        <button type="button">Les mer om aktiviteten +</button>
       </section>
     </article>
   );
 }
-

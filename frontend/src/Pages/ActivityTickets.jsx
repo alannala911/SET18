@@ -1,66 +1,40 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "./api.js";
-import { activityPriceFormatter } from "./activityUtils.js";
+import { activityPriceFormatter, getDiscountedPrice } from "./activityUtils.js";
+import { useCart } from "./cartContext.js";
 
 const orderStatusLabels = { confirmed: "Bekreftet", cancelled: "Avbestilt" };
 const maxTicketsPerOrder = 10;
 
-function getDiscountedPrice(activity, ticketType, memberType) {
-  const discount = activity.discount;
-  const today = new Date().toISOString().slice(0, 10);
-  const appliesToMember = discount?.memberTypes.includes(memberType);
-  const isWithinDateRange = (!discount?.startDate || today >= discount.startDate) &&
-    (!discount?.endDate || today <= discount.endDate);
-
-  if (!appliesToMember || !isWithinDateRange) return ticketType.price;
-
-  const discountAmount = discount.type === "percent"
-    ? ticketType.price * discount.value / 100
-    : discount.value;
-  return Math.max(0, Math.round((ticketType.price - discountAmount) * 100) / 100);
-}
-
-export function TicketPurchase({ activity, ticketType, member, onPurchased }) {
+export function TicketPurchase({ activity, ticketType, member }) {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { add, error } = useCart();
   const remaining = Math.min(
     activity.remainingTickets?.byType[ticketType.name] ?? ticketType.quantity,
     activity.remainingTickets?.total ?? ticketType.quantity,
   );
 
-  if (!member) return <small>Logg inn som medlem på <Link to="/min-side">Min side</Link> for å kjøpe billett.</small>;
-  if (!ticketType.memberTypes.includes(member.type)) return <small>Ikke tilgjengelig for ditt medlemskap.</small>;
+  if (member?.expired) return <small>Medlemskapet er utløpt. Forny det på <Link to="/min-side">Min side</Link>.</small>;
+  if (member && !ticketType.memberTypes.includes(member.type)) return <small>Ikke tilgjengelig for ditt medlemskap.</small>;
+  if (activity.date < new Date().toISOString().slice(0, 10)) return <small>Aktiviteten er allerede avholdt.</small>;
   if (remaining < 1) return <small><strong>Utsolgt</strong></small>;
 
-  const price = getDiscountedPrice(activity, ticketType, member.type);
+  const price = member ? getDiscountedPrice(activity, ticketType, member.type) : ticketType.price;
   const maxQuantity = Math.min(remaining, maxTicketsPerOrder);
 
-  async function buy() {
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      await apiRequest("/membership/orders", {
-        method: "POST",
-        body: JSON.stringify({ activityId: activity.id, ticketName: ticketType.name, quantity: Number(quantity) }),
-      });
-      setMessage("Billettene er bestilt. Du finner dem under Min side.");
-      onPurchased();
-    } catch (purchaseError) {
-      setError(purchaseError.message);
-    } finally {
-      setBusy(false);
-    }
+  function addTickets() {
+    const added = add({ type: "activity", id: activity.id, ticketName: ticketType.name, quantity: Number(quantity), available: remaining, totalAvailable: activity.remainingTickets?.total ?? ticketType.quantity });
+    setMessage(added ? "Billettene er lagt i handlekurven." : "");
   }
 
   return (
     <div className="ticket-purchase">
       <small>
-        Din pris: <strong>{activityPriceFormatter.format(price)}</strong> · {remaining} ledige
+        {member ? "Din pris" : "Pris"}: <strong>{activityPriceFormatter.format(price)}</strong> · {remaining} ledige
       </small>
+      {!member && <small>Medlemsinnlogging kreves før bestilling. <Link to="/min-side">Logg inn</Link></small>}
       <label>
         Antall
         <select value={quantity} onChange={(event) => setQuantity(event.target.value)}>
@@ -69,7 +43,7 @@ export function TicketPurchase({ activity, ticketType, member, onPurchased }) {
           ))}
         </select>
       </label>
-      <button type="button" onClick={buy} disabled={busy}>{busy ? "Bestiller …" : "Kjøp billett"}</button>
+      <button className="activity-cart-button" type="button" onClick={addTickets}>Legg i handlekurv</button>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}
     </div>

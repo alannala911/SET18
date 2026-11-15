@@ -4,6 +4,7 @@ import { isRecord, memberEmail, memberPhone, phoneDigits } from "./members.js";
 
 export const FORM_DATA_ERROR_PREFIX = "Skjemadata";
 
+//* Renser skjemadata rekursivt og begrenser dybde, lengde og felt som kan lagres
 export function sanitizeValue(value, depth = 0, root = true) {
   if (depth > 6)
     throw new Error(`${FORM_DATA_ERROR_PREFIX} er nøstet for dypt`);
@@ -21,7 +22,7 @@ export function sanitizeValue(value, depth = 0, root = true) {
     const output = {};
     for (const [key, item] of Object.entries(value)) {
       if (
-        !/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(key) ||
+        !/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/.test(key) || 
         [
           "__proto__",
           "prototype",
@@ -46,6 +47,7 @@ export function sanitizeValue(value, depth = 0, root = true) {
   );
 }
 
+//* Henter feltverdier fra ulike skjemaformater og nøstede profiler
 function fieldValue(values, flow, field) {
   if (field === "files") return values.__fileCount || 0;
   if (flow === "regular" && field.startsWith("person.")) {
@@ -66,6 +68,7 @@ function fieldValue(values, flow, field) {
   return field.split(".").reduce((value, part) => value?.[part], values);
 }
 
+//* Kontrollerer obligatoriske standardfelt og administratoropprettede felt
 export function checkRequired(values, flow) {
   const config = readStore().config;
   const required = [
@@ -90,6 +93,7 @@ export function checkRequired(values, flow) {
     });
 }
 
+//* Validerer konfigurerte valgalternativer og typer for egendefinerte felt
 export function validateOptions(values, flow) {
   const fields = readStore().config.options?.[flow] || {};
   for (const [field, allowed] of Object.entries(fields)) {
@@ -128,6 +132,7 @@ export function validateOptions(values, flow) {
   return null;
 }
 
+//* Beregner alder etter å ha kontrollert at fødselsdatoen er gyldig
 export function ageOnDate(dateString) {
   if (typeof dateString !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateString))
     return null;
@@ -157,6 +162,7 @@ export function validDateString(value) {
   );
 }
 
+//* Kontrollerer at valgt lokallag tilhører en konfigurert region
 export function validateRegion(group, flow) {
   const regions = readStore().config.regions || [];
   if (!regions.length) return null;
@@ -197,6 +203,7 @@ export function normalizeAddress(value) {
   };
 }
 
+//* Samler medlemsopplysninger i et felles profilformat
 export function regularProfile(values) {
   const person = values.person || {
     firstName: values.firstName,
@@ -214,6 +221,7 @@ export function regularProfile(values) {
   };
 }
 
+//* Normaliserer telefonnumre før validering og sammenligning
 export function normalizedPhone(phone) {
   if (typeof phone !== "string" || !/^\+?[0-9().\s-]+$/.test(phone)) return "";
   const digits = phoneDigits(phone);
@@ -226,6 +234,7 @@ export function validatePhone(phone, label) {
   return null;
 }
 
+//* Hindrer at eksisterende medlemmer deler e-postadresse eller telefonnummer
 export function memberConflict(state, email, phone, excludedMemberId = "") {
   const normalized = normalizedPhone(phone);
   return state.members.some(
@@ -236,6 +245,7 @@ export function memberConflict(state, email, phone, excludedMemberId = "") {
   );
 }
 
+//* Sjekker kontaktopplysninger mot gaveaktiveringer som fortsatt er gyldige
 export function pendingGiftConflict(state, email, phone) {
   const normalized = normalizedPhone(phone);
   return state.applications.some(
@@ -249,6 +259,7 @@ export function pendingGiftConflict(state, email, phone) {
   );
 }
 
+//* Kontrollerer at identifikatoren samsvarer med registrert e-post eller telefon
 export function contactMatches(identifier, email, phone) {
   const normalizedEmail = normalizeEmail(identifier);
   if (validEmail(normalizedEmail) && normalizeEmail(email) === normalizedEmail)

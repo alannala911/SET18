@@ -3,10 +3,14 @@ import { useEffect, useState } from "react";
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function apiRequest(path, options = {}) {
-  const hasJsonBody = options.body && !(options.body instanceof FormData);
+  const isFormBody =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+  const hasJsonBody =
+    options.body != null && !isFormBody && typeof options.body !== "string";
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
     ...options,
+    ...(hasJsonBody ? { body: JSON.stringify(options.body) } : {}),
     headers: {
       ...(hasJsonBody ? { "Content-Type": "application/json" } : {}),
       ...options.headers,

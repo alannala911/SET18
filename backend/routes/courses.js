@@ -2,6 +2,7 @@ import express from "express";
 import { adminSession, requireAdmin } from "./auth.js";
 import { readStore, updateStore } from "../lib/store.js";
 import { recordAudit } from "../lib/audit.js";
+import { shouldArchive } from "../lib/contentArchive.js";
 
 const router = express.Router();
 const courseStatuses = new Set(["published", "draft", "archived"]);
@@ -112,6 +113,7 @@ router.post("/", requireAdmin, async (req, res, next) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      if (shouldArchive(newCourse)) newCourse.status = "archived";
       state.courses.push(newCourse);
       recordAudit(state, req, "course.create", {
         courseId: newCourse.id,
@@ -137,6 +139,7 @@ router.put("/:id", requireAdmin, async (req, res, next) => {
       Object.assign(existingCourse, courseData, {
         updatedAt: new Date().toISOString(),
       });
+      if (shouldArchive(existingCourse)) existingCourse.status = "archived";
       recordAudit(state, req, "course.update", {
         courseId,
         title: existingCourse.title,

@@ -16,11 +16,13 @@ import CourseEditor from "./Pages/CourseEditor.jsx";
 import Activities from "./Pages/Activities.jsx";
 import { ActivityEditor } from "./Pages/ActivityEditor.jsx";
 import News from "./Pages/News.jsx";
+import NewsEditor from "./Pages/NewsEditor.jsx";
 import About from "./Pages/About.jsx";
 import Municipalities from "./Pages/Municipalities.jsx";
 import Contact from "./Pages/Contact.jsx";
 import Search from "./Pages/Search.jsx";
 import Shop from "./Pages/Shop.jsx";
+import { useCart } from "./Pages/cartContext.js";
 import MyPage from "./Pages/MyPage.jsx";
 import MemberProfileChange from "./Pages/MemberProfileChange.jsx";
 import ResetPassword from "./Pages/ResetPassword.jsx";
@@ -131,6 +133,7 @@ function HomePage() {
    Definerer felles oppsett og grunnleggende stil for nettsiden.*/
 
 function App() {
+  const { count } = useCart();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const authCheckSequence = useRef(0);
 
@@ -208,13 +211,14 @@ function App() {
             Søk
           </Link>
 
-          <Link to="/nettbutikk">
+          <Link to="/handlekurv">
             <img
               className="top-icon"
               src={shopIcon}
               alt=""
             />
-            Nettbutikk
+            {count > 0 && <span className="cart-count" aria-label={`${count} varer i handlekurven`}>{count}</span>}
+            Handlekurv
           </Link>
 
           <Link to="/medlemskap">
@@ -391,6 +395,16 @@ function App() {
           />
 
           <Route
+            path="/nyheter/ny"
+            element={<NewsEditor />}
+          />
+
+          <Route
+            path="/nyheter/:newsId/rediger"
+            element={<NewsEditor />}
+          />
+
+          <Route
             path="/om-oss"
             element={<About />}
           />
@@ -412,8 +426,10 @@ function App() {
 
           <Route
             path="/nettbutikk"
-            element={<Shop />}
+            element={<Navigate to="/handlekurv" replace />}
           />
+          <Route path="/handlekurv" element={<Shop />} />
+          <Route path="/betaling" element={<Shop payment />} />
 
           <Route
             path="/medlemskap"

@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FiMapPin } from "react-icons/fi";
+import { municipalities } from "./municipalityData.js";
 import "./Municipalities.css";
 
 /* Eksempeldata – ikke en bekreftet oversikt over lokallag */
-const municipalities = [
-  "Halden",
-  "Fredrikstad",
-  "Sarpsborg",
-  "Moss",
-  "Råde",
-  "Indre Østfold",
-];
-
 export default function Municipalities() {
   const [search, setSearch] = useState("");
   const [selectedMunicipality, setSelectedMunicipality] =

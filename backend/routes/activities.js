@@ -16,6 +16,7 @@ import {
   remainingTickets,
 } from "../lib/pricing.js";
 import { recordAudit } from "../lib/audit.js";
+import { shouldArchive } from "../lib/contentArchive.js";
 import { memberEmail, memberName } from "../lib/members.js";
 import { adminSession, requireAdmin } from "./auth.js";
 
@@ -449,6 +450,7 @@ function createActivityRecord(state, req, activityData, uploadedImage) {
     }),
     createdAt: new Date().toISOString(),
   };
+  if (shouldArchive(activity)) activity.status = "archived";
   state.activities.push(activity);
   recordAudit(state, req, "activity.create", {
     activityId: activity.id,
@@ -479,6 +481,7 @@ function updateActivityRecord(
     }),
     updatedAt: new Date().toISOString(),
   };
+  if (shouldArchive(updatedActivity)) updatedActivity.status = "archived";
   const conflict = soldTicketsConflict(state, activityId, updatedActivity);
   if (conflict) return { conflict };
 
@@ -560,7 +563,7 @@ router.get("/images/:name", async (req, res, next) => {
   const activityWithImage = readStore().activities.find(
     (storedActivity) => storedActivity.imageStorageName === imageFileName,
   );
-  if (!activityWithImage)
+  if (!activityWithImage || (!isPublished(activityWithImage) && !adminSession(req)))
     return res.status(404).json({ message: "Bildet ble ikke funnet" });
   const imageContentType = imageFileName.endsWith(".png")
     ? "image/png"
@@ -572,7 +575,7 @@ router.get("/images/:name", async (req, res, next) => {
     if (!image)
       return res.status(404).json({ message: "Bildet ble ikke funnet" });
     res.setHeader("Content-Type", imageContentType);
-    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Cache-Control", "private, no-cache");
     res.end(image);
   } catch (error) {
     next(error);

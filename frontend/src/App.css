@@ -59,6 +59,20 @@ body {
   text-decoration: none;
 }
 
+.cart-count {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #b52d4d;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
 .top-links a:hover {
   color: var(--red);
 }

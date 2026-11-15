@@ -148,6 +148,65 @@ export const news = [
   },
 ];
 
+export const defaultContact = {
+  introduction:
+    "Har du spørsmål om kurs, aktiviteter eller lokallag? Ta kontakt med oss.",
+  email: "ostfoldhusflid@gmail.com",
+  phone: "917 77 582",
+  address: "Emil Mørchs vei 25\n2. etg., rom 1\n1653 Sellebakk",
+  people: [
+    {
+      id: "mona-andersen",
+      name: "Mona Andersen",
+      role: "Styreleder",
+      email: "mona@sjokkpris.no",
+      phone: "917 77 582",
+    },
+    {
+      id: "aud-kari-holme",
+      name: "Aud Kari Holme",
+      role: "Nestleder",
+      email: "Audkari.holme@gmail.com",
+      phone: "958 79 367",
+    },
+    {
+      id: "heidi-borstad",
+      name: "Heidi Børstad",
+      role: "Sekretær",
+      email: "heidi.borstad@gmail.com",
+      phone: "952 22 155",
+    },
+    {
+      id: "silja-devine-holhjem",
+      name: "Silja Devine Holhjem",
+      role: "Nettansvarlig",
+      email: "siljadevine@gmail.com",
+      phone: "416 64 904",
+    },
+    {
+      id: "linda-p-vallner",
+      name: "Linda P. Vallner",
+      role: "Styremedlem · Ung Husflidskontakt",
+      email: "lindap.vallner@gmail.com",
+      phone: "97 63 84 24",
+    },
+    {
+      id: "thore-grotvedt",
+      name: "Thore Grøtvedt",
+      role: "Styremedlem",
+      email: "thoregro@gmail.com",
+      phone: "901 35 455",
+    },
+    {
+      id: "julie-mari-brevik",
+      name: "Julie Mari Brevik",
+      role: "Varamedlem",
+      email: "bunad.julie@gmail.com",
+      phone: "993 13 244",
+    },
+  ],
+};
+
 export const municipalities = [
   {
     id: 1,
