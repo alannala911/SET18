@@ -134,6 +134,21 @@ test("den offentlige aktivitetslisten fungerer med standardaktivitetene", async 
   assert.ok(Array.isArray(list) && list.length > 0);
 });
 
+test("aktivitetsbilletter avviser priser som ikke er positive tall", async () => {
+  const admin = client();
+  await admin("/auth/login", { method: "POST", body: adminLogin });
+
+  for (const price of ["200", "200 kr", "1e2", "0x10", "$200", -1, 0, null, true]) {
+    const response = await admin("/activities", {
+      method: "POST",
+      form: activityForm({
+        ticketTypes: [{ ...activity.ticketTypes[0], price }],
+      }),
+    });
+    assert.equal(response.status, 400, `pris ${JSON.stringify(price)} skal avvises`);
+  }
+});
+
 test("produksjonsserveren starter ikke med lokal lagring", async () => {
   const temporaryDirectory = await mkdtemp(
     path.join(os.tmpdir(), "set18-production-test-"),
@@ -461,7 +476,7 @@ describe("kurs", () => {
     date: "2099-03-15",
     time: "17:00–20:00",
     place: "Moss",
-    price: "400 kr",
+    price: 400,
     symbol: "🧵",
     color: "wool",
     status: "draft",
@@ -476,11 +491,20 @@ describe("kurs", () => {
     );
     await admin("/auth/login", { method: "POST", body: adminLogin });
 
+    for (const price of ["400", "400 kr", "1e2", "0x10", "$400", -1, 0, null, true]) {
+      const invalidPrice = await admin("/courses", {
+        method: "POST",
+        body: { ...courseDraft, price },
+      });
+      assert.equal(invalidPrice.status, 400, `pris ${JSON.stringify(price)} skal avvises`);
+    }
+
     const created = await admin("/courses", {
       method: "POST",
       body: courseDraft,
     });
     assert.equal(created.status, 201);
+    assert.equal(created.data.price, 400);
     const courseId = created.data.id;
     assert.equal(created.data.status, "draft");
     assert.equal(

@@ -32,7 +32,6 @@ function readCourseData(req, res) {
     "date",
     "time",
     "place",
-    "price",
     "symbol",
     "color",
   ];
@@ -53,8 +52,10 @@ function readCourseData(req, res) {
     course.description.length > 5000 ||
     course.time.length > 80 ||
     course.place.length > 200 ||
-    course.price.length > 80 ||
     course.symbol.length > 20 ||
+    typeof course.price !== "number" ||
+    !Number.isFinite(course.price) ||
+    course.price <= 0 ||
     !/^\d{4}-\d{2}-\d{2}$/.test(course.date) ||
     !courseColors.has(course.color) ||
     !courseStatuses.has(course.status)
@@ -76,6 +77,7 @@ function readCourseData(req, res) {
     ...Object.fromEntries(
       requiredTextFields.map((field) => [field, course[field].trim()]),
     ),
+    price: course.price,
     status: course.status,
   };
 }

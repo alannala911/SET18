@@ -177,7 +177,7 @@ function validateTicketTypes(
         ? ticketType.description.trim()
         : "";
     const rawPrice = ticketType?.price;
-    const price = Number(ticketType?.price);
+    const price = rawPrice;
     const quantity = Number(ticketType?.quantity);
     const hasValidMemberTypes =
       Array.isArray(ticketType?.memberTypes) &&
@@ -190,10 +190,9 @@ function validateTicketTypes(
       !name ||
       name.length > 100 ||
       description.length > 1000 ||
-      (typeof rawPrice !== "number" &&
-        (typeof rawPrice !== "string" || !rawPrice.trim())) ||
+      typeof price !== "number" ||
       !Number.isFinite(price) ||
-      price < 0 ||
+      price <= 0 ||
       price > 1000000 ||
       !Number.isSafeInteger(quantity) ||
       quantity < 1 ||
@@ -202,7 +201,7 @@ function validateTicketTypes(
     ) {
       return {
         error:
-          "Hver billett må ha et navn, gyldig pris og antall, og minst én gyldig medlemskapstype",
+          "Hver billett må ha et navn, positiv pris og antall, og minst én gyldig medlemskapstype",
       };
     }
 

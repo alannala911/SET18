@@ -7,6 +7,17 @@ import {
   FiTag,
 } from "react-icons/fi";
 
+const coursePriceFormatter = new Intl.NumberFormat("nb-NO", {
+  maximumFractionDigits: 2,
+});
+
+function formatCoursePrice(price) {
+  const numericPrice = typeof price === "number" ? price : Number(price);
+  return Number.isFinite(numericPrice)
+    ? `${coursePriceFormatter.format(numericPrice)} kr`
+    : price;
+}
+
 function formatCourseDate(date) {
   const parsedDate = new Date(`${date}T12:00:00`);
   return Number.isNaN(parsedDate.getTime())
@@ -75,7 +86,7 @@ export function CourseCard({ course, showEditControls = false, onRemove }) {
 
           <li>
             <FiTag aria-hidden="true" />
-            Pris: {course.price}
+            Pris: {formatCoursePrice(course.price)}
           </li>
         </ul>
 

@@ -44,8 +44,10 @@ export function getActivityValidationErrors({
   ticketTypes.forEach((ticketType, ticketIndex) => {
     const ticketNumber = ticketIndex + 1;
     if (!ticketType.name.trim()) validationErrors.push(`Billettype ${ticketNumber}: navn må fylles inn.`);
-    if (!ticketType.price.trim() || !Number.isFinite(Number(ticketType.price)) || Number(ticketType.price) < 0) {
-      validationErrors.push(`Billettype ${ticketNumber}: prisen må fylles inn og være null eller høyere.`);
+    const priceText = typeof ticketType.price === "string" ? ticketType.price : "";
+    const price = Number(priceText);
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(priceText) || !Number.isFinite(price) || price <= 0 || price > 1000000) {
+      validationErrors.push(`Billettype ${ticketNumber}: prisen må være et positivt tall på maksimalt 1 000 000 kr.`);
     }
     if (!Number.isSafeInteger(Number(ticketType.quantity)) || Number(ticketType.quantity) < 1) {
       validationErrors.push(`Billettype ${ticketNumber}: antall må være et positivt helt tall.`);
@@ -66,4 +68,3 @@ export function getActivityValidationErrors({
   }
   return validationErrors;
 }
-

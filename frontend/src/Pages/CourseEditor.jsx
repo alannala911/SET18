@@ -25,6 +25,12 @@ const courseColors = [
   ["christmas", "Jul"],
 ];
 
+function getCoursePriceInputValue(price) {
+  if (typeof price === "number") return String(price);
+  if (typeof price !== "string") return "";
+  return price.trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:kr)?$/i)?.[1]?.replace(",", ".") || "";
+}
+
 export default function CourseEditor() {
   const navigate = useNavigate();
   const { courseId } = useParams();
@@ -55,7 +61,7 @@ export default function CourseEditor() {
         date: existingCourse.date || "",
         time: existingCourse.time || "",
         place: existingCourse.place || "",
-        price: existingCourse.price || "",
+        price: getCoursePriceInputValue(existingCourse.price),
         symbol: existingCourse.symbol || "✦",
         color: existingCourse.color || "basket",
         status: existingCourse.status || "published",
@@ -92,7 +98,10 @@ export default function CourseEditor() {
     try {
       await apiRequest(
         isEditingCourse ? `/courses/${encodeURIComponent(courseId)}` : "/courses",
-        { method: isEditingCourse ? "PUT" : "POST", body: courseDraft }
+        {
+          method: isEditingCourse ? "PUT" : "POST",
+          body: { ...courseDraft, price: Number(courseDraft.price) },
+        }
       );
       navigate("/kurs", { replace: true });
     } catch (saveError) {
@@ -196,7 +205,16 @@ export default function CourseEditor() {
               </label>
               <label>
                 <span>Pris *</span>
-                <input name="price" value={courseDraft.price} onChange={updateCourseDraft} maxLength={80} placeholder="650 kr" required />
+                <input
+                  type="number"
+                  name="price"
+                  value={courseDraft.price}
+                  onChange={updateCourseDraft}
+                  min="0.01"
+                  step="0.01"
+                  placeholder="650"
+                  required
+                />
               </label>
               <label>
                 <span>Symbol *</span>

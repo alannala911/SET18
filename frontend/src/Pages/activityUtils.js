@@ -158,7 +158,7 @@ export function createEmptyTicketType() {
   return {
     name: "",
     description: "",
-    price: "0",
+    price: "",
     quantity: "1",
     memberTypes: activityMemberTypeOptions.map(([memberType]) => memberType),
   };
