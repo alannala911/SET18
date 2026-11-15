@@ -1,3 +1,4 @@
+// Definerer administratorruter for medlemmer, søknader, skjemaer og innstillinger
 import express from "express";
 import { randomUUID } from "node:crypto";
 import path from "node:path";

@@ -1,3 +1,4 @@
+// Konfigurerer og starter Express-serveren med API-ruter og frontend
 import express from "express";
 import cors from "cors";
 import path from "node:path";

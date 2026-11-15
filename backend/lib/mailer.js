@@ -1,3 +1,4 @@
+// Håndterer e-postkonfigurasjon, lenker og utsending av e-post
 import nodemailer from "nodemailer";
 
 export function mailConfigured() {

@@ -1,3 +1,4 @@
+// Validerer og renser medlemsdata og skjemainnsendinger
 import { readStore } from "./store.js";
 import { normalizeEmail, validEmail } from "./security.js";
 import { isRecord, memberEmail, memberPhone, phoneDigits } from "./members.js";

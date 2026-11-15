@@ -1,3 +1,4 @@
+// Håndterer administratorinnlogging, autentisering og administratorkontoer
 import express from "express";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { readStore, updateStore } from "../lib/store.js";

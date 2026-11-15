@@ -1,3 +1,4 @@
+// Inneholder standardinnhold for aktiviteter, kurs, nyheter, kontakt og kommuner
 export const activities = [
   {
     id: 1,

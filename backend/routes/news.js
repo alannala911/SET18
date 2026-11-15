@@ -1,3 +1,4 @@
+// Definerer API-rutene for nyheter, inkludert bildeopplasting og arkivering
 import express from "express";
 import multer from "multer";
 import { randomUUID } from "node:crypto";

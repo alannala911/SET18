@@ -1,3 +1,4 @@
+// Definerer API-rutene for kontaktinformasjon, henvendelser og innboks
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { readStore, updateStore } from "../lib/store.js";

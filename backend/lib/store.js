@@ -1,3 +1,4 @@
+// Håndterer applikasjonsdata med lokal JSON-lagring eller MySQL
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";

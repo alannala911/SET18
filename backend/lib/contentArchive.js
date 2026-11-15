@@ -1,3 +1,4 @@
+// Håndterer automatisk arkivering av utløpte kurs og aktiviteter etter norsk dato
 const osloDate = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Oslo",
   year: "numeric",

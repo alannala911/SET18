@@ -1,3 +1,4 @@
+// Inneholder hjelpefunksjoner for medlemsprofiler, medlemskap og samtykker
 export function adminProfile(account) {
   const { person = {}, address = {}, localGroup } = account?.profile || {};
   return {

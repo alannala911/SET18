@@ -1,3 +1,4 @@
+// Begrenser antallet forespørsler fra samme klient innenfor et tidsvindu
 export function rateLimit({
   max,
   windowMs,

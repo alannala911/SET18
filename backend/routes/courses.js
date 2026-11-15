@@ -1,3 +1,4 @@
+// Definerer API-rutene for kurs, inkludert administrasjon og arkivering
 import express from "express";
 import { adminSession, requireAdmin } from "./auth.js";
 import { readStore, updateStore } from "../lib/store.js";
