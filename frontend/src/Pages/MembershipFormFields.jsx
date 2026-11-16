@@ -1,3 +1,4 @@
+// Inneholder skjemafelt for medlemsregistrering og konfigurerte skjemaer
 import { useContext } from "react";
 import { defaultGenderOptions, emptyAddress } from "./MembershipConfig.js";
 import { FormConfigContext } from "./MembershipFormContext.js";

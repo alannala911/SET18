@@ -1,3 +1,4 @@
+// Håndterer kursliste, filtrering, arkivering og administratorhandlinger
 import "./CoursePage.css";
 
 import { useCallback, useEffect, useState } from "react";

@@ -1,3 +1,4 @@
+// Håndterer oppretting, redigering og publisering av nyheter
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiRequest } from "./api.js";

@@ -1,3 +1,4 @@
+// Validerer og oppdaterer kurs og billetter i handlekurven
 export function readCart(value) {
   if (value === null) return [];
   const items = JSON.parse(value);

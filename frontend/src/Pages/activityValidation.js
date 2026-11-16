@@ -1,3 +1,4 @@
+// Validerer aktivitetsdata, billetter, rabatter og bildefiler
 import { allowedActivityImageTypes, maximumActivityImageSizeBytes } from "./activityUtils.js";
 
 export function getActivityValidationErrors({

@@ -1,3 +1,4 @@
+// Håndterer aktivitetsliste, filtrering, arkivering og administratorhandlinger
 import { useEffect, useState } from "react";
 import { apiRequest, useCurrentMember } from "./api.js";
 import {

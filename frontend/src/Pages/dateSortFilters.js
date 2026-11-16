@@ -1,3 +1,4 @@
+// Inneholder felles dato-, tids- og sorteringsfunksjoner for aktiviteter og kurs
 function getLowestPrice(activity) {
   const prices = (activity.ticketTypes || []).map((ticketType) => Number(ticketType.price)).filter(Number.isFinite);
   return prices.length ? Math.min(...prices) : null;

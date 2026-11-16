@@ -1,3 +1,4 @@
+// Viser aktivitet og håndterer billettvalg og handlekurv
 import { ActivityParticipants, TicketPurchase } from "./ActivityTickets.jsx";
 import { useState } from "react";
 import { useCart } from "./cartContext.js";

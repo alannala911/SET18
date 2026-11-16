@@ -1,3 +1,4 @@
+// Filtrerer og sorterer kurs og beregner kursvarighet
 import { compareActivities, matchesDateFilter } from "./dateSortFilters.js";
 
 export function courseDuration(time) {

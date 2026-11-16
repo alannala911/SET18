@@ -1,3 +1,4 @@
+// Tester validering og oppdatering av kurs og billetter i handlekurven
 import test from "node:test";
 import assert from "node:assert/strict";
 import { addCartItem, readCart } from "../src/Pages/cartState.js";

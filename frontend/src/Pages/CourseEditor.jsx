@@ -1,3 +1,4 @@
+// Håndterer oppretting, redigering og lagring av kurs
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiRequest } from "./api.js";

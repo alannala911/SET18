@@ -1,3 +1,4 @@
+// Inneholder hjelpefunksjoner for nyhetsbilder og datoer
 import { API_BASE_URL } from "./api.js";
 import bilde1 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde1.jpg";
 import bilde2 from "../assets/bilder til nettsiden/Ikoner og Bilder/Bilde2.jpg";

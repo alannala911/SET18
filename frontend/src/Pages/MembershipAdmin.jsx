@@ -1,3 +1,4 @@
+// Håndterer administrasjon av medlemskap, søknader og skjemaoppsett
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminMembers from "./AdminMembers.jsx";

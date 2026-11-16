@@ -1,3 +1,4 @@
+// Håndterer kontooversikt, profiloppdatering og kontohandlinger
 import { useState } from "react";
 import { AdminAccounts, ChangePassword, DeleteAccount, MembershipSettings } from "./AccountSecurity.jsx";
 import { MemberOrders } from "./ActivityTickets.jsx";

@@ -1,3 +1,4 @@
+// Definerer medlemskapstyper, skjemafelter og standardvalg
 export const membershipTypes = [
   ["regular", "Vanlig medlemskap"],
   ["minor", "Mindreårig medlemskap"],

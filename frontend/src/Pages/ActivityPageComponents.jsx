@@ -1,3 +1,4 @@
+// Inneholder aktivitetslistens resultater, administrasjon og dialoger
 import { Link } from "react-router-dom";
 import { ActivityCard } from "./ActivityCard.jsx";
 

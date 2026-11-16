@@ -1,3 +1,4 @@
+// Konfigurerer sideruter og navigasjon for nettsiden
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Routes,

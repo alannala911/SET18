@@ -1,3 +1,4 @@
+// Tester filtrering, sortering og varighetsberegning for kurs
 import test from "node:test";
 import assert from "node:assert/strict";
 import { courseDuration, filterCourses } from "../src/Pages/courseFilters.js";

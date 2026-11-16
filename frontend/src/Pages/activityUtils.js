@@ -1,3 +1,4 @@
+// Inneholder hjelpefunksjoner for aktivitetsdata, priser og visning
 import { API_BASE_URL } from "./api.js";
 
 export const knownActivityDecorations = {

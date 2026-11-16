@@ -1,3 +1,4 @@
+// Håndterer kontaktinnstillinger, kontaktpersoner og administratorinnboks
 import { useCallback, useEffect, useState } from "react";
 import { FiMail, FiMapPin, FiPhone, FiPlus, FiTrash2 } from "react-icons/fi";
 import { apiRequest } from "./api.js";

@@ -1,3 +1,4 @@
+// Viser kurs og håndterer handlinger for handlekurven
 import { Link } from "react-router-dom";
 import {
   FiArrowRight,

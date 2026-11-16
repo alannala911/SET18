@@ -1,3 +1,4 @@
+// Håndterer administrasjon, filtrering og oppdatering av medlemmer
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "./api.js";
 

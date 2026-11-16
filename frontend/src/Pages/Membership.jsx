@@ -1,3 +1,4 @@
+// Håndterer medlemsregistrering, aktivering og tilpassede skjemaer
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { request, useAdminSession } from "./MembershipApi.js";

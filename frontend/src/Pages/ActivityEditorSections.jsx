@@ -1,3 +1,4 @@
+// Håndterer redigering av aktivitetstyper, billetter og rabatter
 import { activityMemberTypeOptions, discountMemberTypeOptions } from "./activityUtils.js";
 
 export function TicketTypesEditor({

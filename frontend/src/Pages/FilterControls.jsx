@@ -1,3 +1,4 @@
+// Håndterer tidsfiltrering og sorteringsvalg for aktiviteter og kurs
 import "./FilterControls.css";
 
 const activitySortOptions = [

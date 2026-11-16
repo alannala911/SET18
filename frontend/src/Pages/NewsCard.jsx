@@ -1,3 +1,4 @@
+// Viser nyhet og administratorhandlinger for redigering og arkivering
 import { Link } from "react-router-dom";
 import { formatNewsDate, getNewsImageSource } from "./newsUtils.js";
 

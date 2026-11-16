@@ -1,3 +1,4 @@
+// Håndterer billettkjøp, deltakere og medlemsbestillinger
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "./api.js";

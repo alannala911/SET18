@@ -1,3 +1,4 @@
+// Tester automatisk arkivering av kurs og aktiviteter etter norsk dato
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { archiveDate, archivePastContent } from "../lib/contentArchive.js";

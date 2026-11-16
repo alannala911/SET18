@@ -1,3 +1,4 @@
+// Håndterer API-kall og administratorøkter for medlemsfunksjoner
 import { useEffect, useState } from "react";
 
 export const API = import.meta.env.VITE_API_BASE_URL || "/api";

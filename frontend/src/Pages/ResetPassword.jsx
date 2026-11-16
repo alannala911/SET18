@@ -1,3 +1,4 @@
+// Håndterer tilbakestilling av passord fra personlig lenke
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiRequest } from "./api.js";

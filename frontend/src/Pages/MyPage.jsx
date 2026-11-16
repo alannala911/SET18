@@ -1,3 +1,4 @@
+// Håndterer medlems- og administratorinnlogging og min side
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "./api.js";

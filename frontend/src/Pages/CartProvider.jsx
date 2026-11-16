@@ -1,3 +1,4 @@
+// Laster, oppdaterer og lagrer handlekurven i nettleseren
 import { useEffect, useState } from "react";
 import { CartContext } from "./cartContext.js";
 import { addCartItem, readCart } from "./cartState.js";

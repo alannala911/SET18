@@ -1,3 +1,4 @@
+// Tester API-funksjoner for medlemskap, innlogging, kurs og aktiviteter
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
