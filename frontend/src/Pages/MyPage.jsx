@@ -126,7 +126,11 @@ export default function MyPage() {
     setBusy(true);
 
     try {
-      const loginOptions = { method: "POST", body: JSON.stringify(credentials) };
+      const loginOptions = {
+        method: "POST",
+        body: JSON.stringify(credentials),
+        headers: jsonHeaders,
+      };
       try {
         await apiRequest("/membership/login", loginOptions);
       } catch (memberLoginError) {
