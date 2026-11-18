@@ -529,7 +529,7 @@ function RegistrationForms({ type, config }) {
         <CheckField fieldKey="business.qualificationConfirmed" label="Jeg bekrefter at minst én ansatt i bedriften har svennebrev, tilsvarende utdanning eller høyere håndverksutdanning." checked={form.business.qualificationConfirmed} onChange={(event) => setNested("business", { qualificationConfirmed: event.target.checked })} required forceRequired forceVisible />
         {address("business.address", "Bedriftens adresse", "business.address")}
         <PersonFields title="Søkerens personinformasjon" fieldPrefix="applicant" value={form.applicant} onChange={(applicant) => setNested("applicant", applicant)} lockedFields={["email", "phone"]} />
-        <Section title="Søkerens fødselsdato og adresse">
+        <Section title="Søkerens fødselsdato">
           <Field label="Fødselsdato" fieldKey="applicant.birthDate" type="date" value={form.applicant.birthDate} onChange={(event) => setNested("applicant", { birthDate: event.target.value })} required forceRequired forceVisible />
           <p className="membership-note">Søkeren må være 18 år eller eldre.</p>
         </Section>
@@ -568,7 +568,7 @@ function RegistrationForms({ type, config }) {
               return <TextAreaField key={key} fieldKey={`jury.${key}`} label={labels[key]} value={form.jury[key]} onChange={(event) => setNested("jury", { [key]: event.target.value })} />;
             })}
           </Section>
-          <p className="membership-note">{config?.craftShippingInstructions || "Informasjon om hvor produktene skal sendes er ikke satt av administrator ennå."}</p>
+          <p className="membership-note">{config?.craftShippingInstructions || "Informasjon om hvor produktene skal sendes er ikke satt ennå."}</p>
         </>}
         <LocalGroupFields config={config} fieldPrefix="localGroup" region={form.region} chapter={form.chapter} onChange={changeGroup} optional />
         <CheckField fieldKey="criteriaAccepted" label="Jeg har forstått medlemskriteriene for Norske Husflidshåndverkere i Norges Husflidslag." checked={form.criteriaAccepted} onChange={(event) => setForm({ criteriaAccepted: event.target.checked })} required forceRequired forceVisible />

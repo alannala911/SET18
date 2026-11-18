@@ -23,7 +23,7 @@ export const configurableSections = {
   regular: ["Alderskontroll", "Personlig informasjon", "Passord", "Adresse", "Velg lokallag"],
   minor: ["Barnets informasjon", "Barnets alder", "Forelders informasjon", "Passord", "Adresse", "Velg lokallag"],
   gift: ["Kjøperens alderskontroll", "Kjøperens personlige informasjon", "Kjøperens adresse", "Mottakerens alderskontroll", "Mottakerens personlige informasjon", "Mottakerens adresse", "Foresattens informasjon", "Velg lokallag"],
-  craft: ["Bedriftsinformasjon", "Bedriftens adresse", "Søkerens personinformasjon", "Søkerens fødselsdato og adresse", "Søkerens adresse", "Håndverkstype", "Last opp dokumentasjon", "Juryert opptak", "Velg lokallag"],
+  craft: ["Bedriftsinformasjon", "Bedriftens adresse", "Søkerens personinformasjon", "Søkerens fødselsdato", "Søkerens adresse", "Håndverkstype", "Last opp dokumentasjon", "Juryert opptak", "Velg lokallag"],
 };
 
 export function createBuilderField(type = "text") {
