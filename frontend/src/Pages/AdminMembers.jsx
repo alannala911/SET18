@@ -1,5 +1,6 @@
+// Håndterer administrasjon, filtrering og oppdatering av medlemmer
 import { useCallback, useEffect, useState } from "react";
-import { API_BASE_URL, apiRequest } from "./api.js";
+import { apiRequest } from "./api.js";
 
 const memberTypeLabels = {
   regular: "Vanlig",
@@ -129,9 +130,6 @@ export default function AdminMembers() {
     <section className="membership-section admin-members">
       <h2>Medlemsliste</h2>
       <MemberFilters filters={filters} onFilterChange={updateFilter} />
-      <a className="membership-secondary" href={`${API_BASE_URL}/admin/members/export?${queryString}`}>
-        Eksporter til CSV
-      </a>
       {error && <p className="membership-alert membership-error" role="alert">{error}</p>}
       <p>{members.length} medlem(mer)</p>
       <ul>

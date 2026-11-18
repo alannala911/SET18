@@ -1,7 +1,9 @@
+// Definerer API-rutene for kurs, inkludert administrasjon og arkivering
 import express from "express";
 import { adminSession, requireAdmin } from "./auth.js";
 import { readStore, updateStore } from "../lib/store.js";
 import { recordAudit } from "../lib/audit.js";
+import { shouldArchive } from "../lib/contentArchive.js";
 
 const router = express.Router();
 const courseStatuses = new Set(["published", "draft", "archived"]);
@@ -32,7 +34,6 @@ function readCourseData(req, res) {
     "date",
     "time",
     "place",
-    "price",
     "symbol",
     "color",
   ];
@@ -53,8 +54,10 @@ function readCourseData(req, res) {
     course.description.length > 5000 ||
     course.time.length > 80 ||
     course.place.length > 200 ||
-    course.price.length > 80 ||
     course.symbol.length > 20 ||
+    typeof course.price !== "number" ||
+    !Number.isFinite(course.price) ||
+    course.price <= 0 ||
     !/^\d{4}-\d{2}-\d{2}$/.test(course.date) ||
     !courseColors.has(course.color) ||
     !courseStatuses.has(course.status)
@@ -76,6 +79,7 @@ function readCourseData(req, res) {
     ...Object.fromEntries(
       requiredTextFields.map((field) => [field, course[field].trim()]),
     ),
+    price: course.price,
     status: course.status,
   };
 }
@@ -110,6 +114,7 @@ router.post("/", requireAdmin, async (req, res, next) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      if (shouldArchive(newCourse)) newCourse.status = "archived";
       state.courses.push(newCourse);
       recordAudit(state, req, "course.create", {
         courseId: newCourse.id,
@@ -135,6 +140,7 @@ router.put("/:id", requireAdmin, async (req, res, next) => {
       Object.assign(existingCourse, courseData, {
         updatedAt: new Date().toISOString(),
       });
+      if (shouldArchive(existingCourse)) existingCourse.status = "archived";
       recordAudit(state, req, "course.update", {
         courseId,
         title: existingCourse.title,

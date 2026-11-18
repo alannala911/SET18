@@ -1,3 +1,4 @@
+// Håndterer bekreftelse og oppdatering av medlemsprofil via lenke
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiRequest } from "./api.js";

@@ -1,3 +1,4 @@
+// Registrerer og begrenser historikken over administratorhandlinger
 const maxEntries = 5000;
 
 export function recordAudit(state, req, action, details = {}) {

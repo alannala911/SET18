@@ -1,3 +1,4 @@
+// Håndterer redigering av felter i medlems- og administratorskjemaer
 import { createBuilderField, builderFieldTypes, presetFieldTypes } from "./MembershipConfig.js";
 
 export function BuilderFieldEditor({ field, onChange, onRemove, allowFiles = true }) {

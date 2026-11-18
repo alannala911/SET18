@@ -1,3 +1,4 @@
+// Håndterer passord, administrator kontoer og sikkerhetsinnstillinger
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "./api.js";
 

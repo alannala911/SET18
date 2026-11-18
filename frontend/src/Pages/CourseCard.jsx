@@ -1,3 +1,4 @@
+// Viser kurs og håndterer handlinger for handlekurven
 import { Link } from "react-router-dom";
 import {
   FiArrowRight,
@@ -6,6 +7,20 @@ import {
   FiMapPin,
   FiTag,
 } from "react-icons/fi";
+import { useState } from "react";
+import { useCart } from "./cartContext.js";
+import "./ContentStatus.css";
+
+const coursePriceFormatter = new Intl.NumberFormat("nb-NO", {
+  maximumFractionDigits: 2,
+});
+
+function formatCoursePrice(price) {
+  const numericPrice = typeof price === "number" ? price : Number(price);
+  return Number.isFinite(numericPrice)
+    ? `${coursePriceFormatter.format(numericPrice)} kr`
+    : price;
+}
 
 function formatCourseDate(date) {
   const parsedDate = new Date(`${date}T12:00:00`);
@@ -19,6 +34,8 @@ function formatCourseDate(date) {
 }
 
 export function CourseCard({ course, showEditControls = false, onRemove }) {
+  const { add, error } = useCart();
+  const [added, setAdded] = useState(false);
   return (
     <article className="course-card">
       {showEditControls && (
@@ -31,14 +48,14 @@ export function CourseCard({ course, showEditControls = false, onRemove }) {
           >
             Rediger
           </Link>
-          <button
+          {onRemove && <button
             className="course-admin-remove"
             type="button"
             aria-label={`Arkiver ${course.title}`}
             onClick={() => onRemove(course)}
           >
             ×
-          </button>
+          </button>}
         </div>
       )}
       <header className={`course-image ${course.color}`}>
@@ -48,7 +65,7 @@ export function CourseCard({ course, showEditControls = false, onRemove }) {
       <section className="course-card-content">
         <p className="course-category">{course.category}</p>
         {course.status !== "published" && (
-          <p className="course-status">
+          <p className="content-status">
             {course.status === "draft" ? "Utkast" : "Arkivert"}
           </p>
         )}
@@ -75,14 +92,16 @@ export function CourseCard({ course, showEditControls = false, onRemove }) {
 
           <li>
             <FiTag aria-hidden="true" />
-            Pris: {course.price}
+            Pris: {formatCoursePrice(course.price)}
           </li>
         </ul>
 
-        <button type="button">
-          Les mer og meld deg på
+        {course.status === "published" && <button type="button" onClick={() => setAdded(add({ type: "course", id: course.id, quantity: 1 }))}>
+          Legg i handlekurv
           <FiArrowRight aria-hidden="true" />
-        </button>
+        </button>}
+        {added && <p role="status">Kurset er lagt i handlekurven.</p>}
+        {error && <p role="alert">{error}</p>}
       </section>
     </article>
   );

@@ -1,54 +1,73 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiRequest } from "./api.js";
+import { buildSearchIndex, findSearchResults } from "./searchIndex.js";
 import "./Search.css";
 
-/* Sidene det er mulig å søke etter */
-const pages = [
-  {
-    title: "Kurs",
-    description: "Finn kurs i strikking, søm, toving og annet håndverk.",
-    path: "/kurs",
-  },
-  {
-    title: "Aktiviteter",
-    description: "Se arrangementer, håndarbeidstreff og møteplasser.",
-    path: "/aktiviteter",
-  },
-  {
-    title: "Nyheter",
-    description: "Les siste nytt fra Østfold Husflidslag.",
-    path: "/nyheter",
-  },
-  {
-    title: "Om oss",
-    description: "Bli kjent med Østfold Husflidslag og arbeidet vårt.",
-    path: "/om-oss",
-  },
-  {
-    title: "Kommuner og lokallag",
-    description: "Finn lokale husflidslag i området ditt.",
-    path: "/kommuner",
-  },
-  {
-    title: "Kontakt oss",
-    description: "Finn telefon, e-post, adresse og kontaktpersoner i styret.",
-    path: "/kontakt",
-  },
-  {
-    title: "Medlemskap",
-    description: "Finn informasjon om å bli medlem.",
-    path: "/medlemskap",
-  },
+const sources = [
+  ["courses", "kurs", "/courses"],
+  ["activities", "aktiviteter", "/activities"],
+  ["news", "nyheter", "/news"],
+  ["contact", "kontaktinformasjon", "/contact/settings"],
+  ["membership", "medlemskapsskjemaer", "/membership/config"],
 ];
+
+function plainText(value) {
+  const html = value.replace(/<\/(?:p|li|h[1-6])\s*>|<br\s*\/?>/gi, "$& ");
+  return new DOMParser().parseFromString(html, "text/html").body.textContent.replace(/\s+/g, " ").trim();
+}
+
+function Highlight({ value, term, excerpt = false }) {
+  const lowered = value.toLocaleLowerCase("nb-NO");
+  const query = term.toLocaleLowerCase("nb-NO");
+  const first = lowered.indexOf(query);
+  if (first < 0) return value;
+  const start = excerpt ? Math.max(0, first - 80) : 0;
+  const end = excerpt ? Math.min(value.length, first + query.length + 80) : value.length;
+  const parts = [];
+  let position = start;
+  let index = lowered.indexOf(query, position);
+  while (index >= 0 && index < end) {
+    parts.push(value.slice(position, index));
+    parts.push(<mark key={index}>{value.slice(index, index + query.length)}</mark>);
+    position = index + query.length;
+    index = lowered.indexOf(query, position);
+  }
+  parts.push(value.slice(position, end));
+  return <>{start > 0 && "…"}{parts}{end < value.length && "…"}</>;
+}
 
 export default function Search() {
   const [search, setSearch] = useState("");
-  const searchText = search.trim().toLowerCase();
+  const [data, setData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [failedSources, setFailedSources] = useState([]);
+  useEffect(() => {
+    let active = true;
+    Promise.allSettled(sources.map(async ([key, , path]) => {
+      const result = await apiRequest(path, { credentials: "omit" });
+      if (["courses", "activities", "news"].includes(key) ? !Array.isArray(result) : !result || typeof result !== "object" || Array.isArray(result)) {
+        throw new Error("Ugyldig svar fra serveren.");
+      }
+      return result;
+    })).then((responses) => {
+      if (!active) return;
+      setData(Object.fromEntries(responses.flatMap((response, index) =>
+        response.status === "fulfilled" ? [[sources[index][0], response.value]] : [])));
+      setFailedSources(responses.flatMap((response, index) =>
+        response.status === "rejected" ? [sources[index][1]] : []));
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
 
-  const results = pages.filter((page) => {
-    const text = `${page.title} ${page.description}`.toLowerCase();
-    return text.includes(searchText);
-  });
+  const searchText = search.trim();
+  const index = useMemo(() => buildSearchIndex({ ...data, htmlToText: plainText }), [data]);
+  const results = useMemo(() => findSearchResults(index, searchText), [index, searchText]);
+  const groups = results.reduce((grouped, result) => {
+    (grouped[result.category] ??= []).push(result);
+    return grouped;
+  }, {});
 
   return (
     <main className="search-page">
@@ -56,40 +75,34 @@ export default function Search() {
         <h1>Søk på nettsiden</h1>
         <p>Finn kurs, aktiviteter og informasjon fra Husflidslaget.</p>
       </header>
-
       <section className="search-field">
         <label htmlFor="site-search">Hva leter du etter?</label>
-
-        <input
-          id="site-search"
-          type="search"
-          placeholder="Søk etter for eksempel kurs eller kontakt ..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+        <input id="site-search" type="search" placeholder="Søk etter for eksempel kurs eller kontakt ..." value={search} onChange={(event) => setSearch(event.target.value)} />
       </section>
-
+      {failedSources.length > 0 && <p className="search-error" role="alert">Kunne ikke laste {failedSources.join(", ")}. Søkeresultatene kan være ufullstendige. Last inn siden på nytt for å prøve igjen.</p>}
       <p className="search-count" role="status">
-        {searchText
-          ? `${results.length} treff på «${search.trim()}»`
-          : "Velg en side nedenfor, eller skriv i søkefeltet."}
+        {loading ? "Laster søkbart innhold …" : searchText ? `${results.length} treff på «${searchText}»` : "Skriv et søkeord for å se treff."}
       </p>
-
-      <ul className="search-results">
-        {results.map((page) => (
-          <li key={page.path}>
-            <h2>{page.title}</h2>
-            <p>{page.description}</p>
-            <Link to={page.path}>Gå til {page.title.toLowerCase()} →</Link>
-          </li>
-        ))}
-      </ul>
-
-      {results.length === 0 && (
-        <p className="search-empty">
-          Ingen treff. Prøv et annet søkeord.
-        </p>
-      )}
+      {searchText && Object.entries(groups).map(([category, items]) => (
+        <section className="search-group" key={category}>
+          <h2>{category}</h2>
+          <ul className="search-results">
+            {items.map((item, index) => (
+              <li key={`${item.path}-${item.title}-${index}`}>
+                <h3><Highlight value={item.title} term={searchText} /></h3>
+                {item.subcategory && <p className="search-subcategory">Kategori: <Highlight value={item.subcategory} term={searchText} /></p>}
+                <ul className="search-matches">
+                  {item.matches.map(([label, value], matchIndex) => (
+                    <li key={`${label}-${matchIndex}`}><strong>{label}:</strong> <Highlight value={value} term={searchText} excerpt /></li>
+                  ))}
+                </ul>
+                <Link to={item.path}>Gå til {category.toLocaleLowerCase("nb-NO")} <span aria-hidden="true">→</span></Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {!loading && searchText && results.length === 0 && <p className="search-empty">Ingen treff. Prøv et annet søkeord.</p>}
     </main>
   );
 }

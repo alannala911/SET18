@@ -146,62 +146,6 @@
   background: #fff5e7;
 }
 
-.activity-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  align-items: end;
-  gap: 14px;
-  margin: 28px 0;
-  padding: 18px;
-  border: 1px solid #e5c8ce;
-  border-radius: 12px;
-  background: #fffafb;
-}
-
-.activity-controls > label,
-.activity-date-range label {
-  display: grid;
-  gap: 7px;
-  color: #263238;
-  font-weight: 700;
-}
-
-.activity-controls select,
-.activity-controls input {
-  width: 100%;
-  min-height: 42px;
-  padding: 8px 10px;
-  border: 1px solid #9a8d91;
-  border-radius: 6px;
-  color: #263238;
-  background: #ffffff;
-  font: inherit;
-}
-
-.activity-advanced-toggle {
-  min-height: 42px;
-  padding: 8px 16px;
-  border: 1px solid #8f2740;
-  border-radius: 6px;
-  color: #8f2740;
-  background: #ffffff;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.activity-advanced-toggle[aria-expanded="true"] {
-  color: #ffffff;
-  background: #8f2740;
-}
-
-.activity-date-range {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
 /* AKTIVITETSKORT
    Bestemmer størrelse, tekst og utseende på aktivitetskortene.*/
 
@@ -209,6 +153,12 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 22px;
+}
+
+.activity-archive {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #dddddd;
 }
 
 .activity-card {
@@ -284,7 +234,7 @@
   font-size: 25px;
 }
 
-.activity-content > p:not(.activity-category) {
+.activity-content > p:not(.activity-category):not(.content-status) {
   min-height: 55px;
   color: #596773;
   line-height: 1.5;
@@ -352,6 +302,53 @@
 
 .activity-content button:hover {
   text-decoration: underline;
+}
+
+.activity-content .activity-cart-button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #fff;
+  background: #a72645;
+}
+
+.activity-content .activity-cart-button:hover {
+  background: #852b3b;
+  text-decoration: none;
+}
+
+.activity-cart-button:focus-visible {
+  outline: 3px solid #852b3b;
+  outline-offset: 3px;
+}
+
+.activity-details summary {
+  width: fit-content;
+  padding: 10px 0;
+  color: #8c2943;
+  font-weight: bold;
+  cursor: pointer;
+  list-style: none;
+}
+
+.activity-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.activity-details summary::after {
+  content: " +";
+}
+
+.activity-details[open] summary::after {
+  content: " −";
+}
+
+.activity-details summary:hover {
+  text-decoration: underline;
+}
+
+.activity-details summary:focus-visible {
+  outline: 3px solid #852b3b;
+  outline-offset: 3px;
 }
 
 .activity-card-photo {
@@ -864,7 +861,7 @@
     grid-template-columns: 1fr;
   }
 
-  .activity-content > p:not(.activity-category) {
+  .activity-content > p:not(.activity-category):not(.content-status) {
     min-height: auto;
   }
 }
@@ -889,10 +886,6 @@
   .activities-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .activity-date-range {
-    grid-column: auto;
   }
 
   .activity-pagination {
@@ -936,13 +929,4 @@
 
 .member-orders li button {
   margin-left: 10px;
-}
-
-.activity-status {
-  display: inline-block;
-  margin: 0 0 8px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: #f1e3a8;
-  font-weight: 700;
 }

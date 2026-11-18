@@ -1,3 +1,4 @@
+// Håndterer redigering av aktivitetstyper, billetter og rabatter
 import { activityMemberTypeOptions, discountMemberTypeOptions } from "./activityUtils.js";
 
 export function TicketTypesEditor({
@@ -53,7 +54,7 @@ export function TicketTypesEditor({
               <span>Pris (kr) *</span>
               <input
                 type="number"
-                min="0"
+                min="0.01"
                 max="1000000"
                 step="0.01"
                 value={ticketType.price}

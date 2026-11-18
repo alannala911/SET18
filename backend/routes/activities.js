@@ -1,3 +1,4 @@
+// Definerer API-rutene for aktiviteter, billetter og aktivitetsbilder
 import express from "express";
 import multer from "multer";
 import path from "node:path";
@@ -16,6 +17,7 @@ import {
   remainingTickets,
 } from "../lib/pricing.js";
 import { recordAudit } from "../lib/audit.js";
+import { shouldArchive } from "../lib/contentArchive.js";
 import { memberEmail, memberName } from "../lib/members.js";
 import { adminSession, requireAdmin } from "./auth.js";
 
@@ -177,7 +179,7 @@ function validateTicketTypes(
         ? ticketType.description.trim()
         : "";
     const rawPrice = ticketType?.price;
-    const price = Number(ticketType?.price);
+    const price = rawPrice;
     const quantity = Number(ticketType?.quantity);
     const hasValidMemberTypes =
       Array.isArray(ticketType?.memberTypes) &&
@@ -190,10 +192,9 @@ function validateTicketTypes(
       !name ||
       name.length > 100 ||
       description.length > 1000 ||
-      (typeof rawPrice !== "number" &&
-        (typeof rawPrice !== "string" || !rawPrice.trim())) ||
+      typeof price !== "number" ||
       !Number.isFinite(price) ||
-      price < 0 ||
+      price <= 0 ||
       price > 1000000 ||
       !Number.isSafeInteger(quantity) ||
       quantity < 1 ||
@@ -202,7 +203,7 @@ function validateTicketTypes(
     ) {
       return {
         error:
-          "Hver billett må ha et navn, gyldig pris og antall, og minst én gyldig medlemskapstype",
+          "Hver billett må ha et navn, positiv pris og antall, og minst én gyldig medlemskapstype",
       };
     }
 
@@ -450,6 +451,7 @@ function createActivityRecord(state, req, activityData, uploadedImage) {
     }),
     createdAt: new Date().toISOString(),
   };
+  if (shouldArchive(activity)) activity.status = "archived";
   state.activities.push(activity);
   recordAudit(state, req, "activity.create", {
     activityId: activity.id,
@@ -480,6 +482,7 @@ function updateActivityRecord(
     }),
     updatedAt: new Date().toISOString(),
   };
+  if (shouldArchive(updatedActivity)) updatedActivity.status = "archived";
   const conflict = soldTicketsConflict(state, activityId, updatedActivity);
   if (conflict) return { conflict };
 
@@ -561,7 +564,7 @@ router.get("/images/:name", async (req, res, next) => {
   const activityWithImage = readStore().activities.find(
     (storedActivity) => storedActivity.imageStorageName === imageFileName,
   );
-  if (!activityWithImage)
+  if (!activityWithImage || (!isPublished(activityWithImage) && !adminSession(req)))
     return res.status(404).json({ message: "Bildet ble ikke funnet" });
   const imageContentType = imageFileName.endsWith(".png")
     ? "image/png"
@@ -573,7 +576,7 @@ router.get("/images/:name", async (req, res, next) => {
     if (!image)
       return res.status(404).json({ message: "Bildet ble ikke funnet" });
     res.setHeader("Content-Type", imageContentType);
-    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Cache-Control", "private, no-cache");
     res.end(image);
   } catch (error) {
     next(error);

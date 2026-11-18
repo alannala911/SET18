@@ -1,3 +1,4 @@
+// Konfigurerer og starter Express-serveren med API-ruter og frontend
 import express from "express";
 import cors from "cors";
 import path from "node:path";
@@ -11,7 +12,8 @@ import ordersRoutes from "./routes/orders.js";
 import membershipRoutes from "./routes/membership.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
-import { refreshStore } from "./lib/store.js";
+import { readStore, refreshStore, updateStore } from "./lib/store.js";
+import { archivePastContent, shouldArchive } from "./lib/contentArchive.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -117,9 +119,25 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+async function archiveExpiredContent() {
+  await refreshStore();
+  const state = readStore();
+  if (state.courses.some((item) => shouldArchive(item)) ||
+      state.activities.some((item) => shouldArchive(item))) {
+    await updateStore((current) => archivePastContent(current));
+  }
+}
+
 app.use((req, res, next) => {
-  refreshStore().then(() => next(), next);
+  archiveExpiredContent().then(() => next(), next);
 });
+
+const archiveTimer = setInterval(() => {
+  archiveExpiredContent().catch((error) => {
+    console.error(`Automatisk arkivering feilet: ${error.message}`);
+  });
+}, 60_000);
+archiveTimer.unref();
 
 app.use("/api/activities", activitiesRoutes);
 app.use("/api/courses", coursesRoutes);

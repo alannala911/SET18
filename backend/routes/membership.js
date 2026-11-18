@@ -1,3 +1,4 @@
+// Definerer API-rutene for medlemsregistrering, kontoer og medlemsprofil
 import express from "express";
 import multer from "multer";
 import { randomUUID } from "node:crypto";
