@@ -1,3 +1,4 @@
+// Beregner billettpriser, rabatter, tilgjengelighet og aktivitetsstatus
 export function activeDiscount(
   activity,
   memberType,

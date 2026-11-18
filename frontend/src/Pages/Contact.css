@@ -186,6 +186,193 @@
   margin-top: 35px;
 }
 
+.contact-admin-panel,
+.contact-inbox {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid #e4cdd2;
+  border-radius: 12px;
+  background: #fffafa;
+}
+
+.contact-admin-heading,
+.contact-people-editor-heading,
+.contact-admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.contact-admin-heading h2,
+.contact-people-editor-heading h3 {
+  margin: 4px 0 0;
+}
+
+.contact-admin-heading .contact-label {
+  margin: 0;
+}
+
+.contact-admin-panel button,
+.contact-message button {
+  display: inline-flex;
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid #852b3b;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  background: #852b3b;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.contact-admin-panel button:hover,
+.contact-message button:hover {
+  background: #6f1e2c;
+}
+
+.contact-admin-panel .contact-secondary-button,
+.contact-message .contact-secondary-button {
+  color: #852b3b;
+  background: #fff;
+}
+
+.contact-admin-panel button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.contact-editor {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.contact-editor > h3,
+.contact-people-editor-heading h3 {
+  color: #852b3b;
+}
+
+.contact-editor label {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.contact-editor input,
+.contact-editor textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  color: #1f1f1f;
+  background: #fff;
+  font: inherit;
+}
+
+.contact-editor textarea {
+  resize: vertical;
+}
+
+.contact-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.contact-person-editor {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid #dccbd0;
+  border-radius: 10px;
+}
+
+.contact-person-editor legend {
+  padding: 0 8px;
+  color: #852b3b;
+  font-weight: 700;
+}
+
+.contact-person-editor .contact-remove-person {
+  justify-self: end;
+}
+
+.contact-admin-actions {
+  justify-content: flex-end;
+}
+
+.contact-honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.contact-error {
+  color: #9e1d30;
+  font-weight: 700;
+}
+
+.contact-inbox {
+  margin-top: 35px;
+}
+
+.contact-message-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.contact-message {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: white;
+}
+
+.contact-message header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.contact-message h3 {
+  margin: 0 0 6px;
+}
+
+.contact-message time {
+  color: #555;
+  font-size: 14px;
+}
+
+.contact-message .contact-role {
+  color: #852b3b;
+  font-weight: 700;
+}
+
+.contact-message > p:not(.contact-role) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.contact-page-status {
+  margin-top: 18px;
+  color: #27623e;
+  font-weight: 700;
+}
+
 .contact-board > h2 {
   font-size: 30px;
 }
@@ -261,5 +448,14 @@
 
   .contact-board-grid {
     grid-template-columns: 1fr;
+  }
+
+  .contact-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-admin-panel,
+  .contact-inbox {
+    padding: 18px;
   }
 }

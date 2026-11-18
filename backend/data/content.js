@@ -1,3 +1,4 @@
+// Inneholder standardinnhold for aktiviteter, kurs, nyheter, kontakt og kommuner
 export const activities = [
   {
     id: 1,
@@ -44,7 +45,7 @@ export const courses = [
     date: "2026-11-12",
     time: "17:00–21:00",
     place: "Borge ungdomsskole, Sarpsborg",
-    price: "650 kr",
+    price: 650,
     symbol: "🧺",
     color: "basket",
     status: "published",
@@ -58,7 +59,7 @@ export const courses = [
     date: "2027-01-08",
     time: "17:00–21:00",
     place: "Moss kulturskole",
-    price: "550 kr",
+    price: 550,
     symbol: "🧶",
     color: "wool",
     status: "published",
@@ -72,7 +73,7 @@ export const courses = [
     date: "2027-01-15",
     time: "10:00–15:00",
     place: "Råde husflidssenter",
-    price: "750 kr",
+    price: 750,
     symbol: "🪡",
     color: "sewing",
     status: "published",
@@ -86,7 +87,7 @@ export const courses = [
     date: "2027-02-05",
     time: "17:00–20:00",
     place: "Moss kulturskole",
-    price: "600 kr",
+    price: 600,
     symbol: "🌸",
     color: "embroidery",
     status: "published",
@@ -100,7 +101,7 @@ export const courses = [
     date: "2027-02-12",
     time: "17:00–21:00",
     place: "Sarpsborg læringssenter",
-    price: "650 kr",
+    price: 650,
     symbol: "🧤",
     color: "knitting",
     status: "published",
@@ -114,7 +115,7 @@ export const courses = [
     date: "2026-11-28",
     time: "17:00–20:00",
     place: "Moss kulturskole",
-    price: "500 kr",
+    price: 500,
     symbol: "🎄",
     color: "christmas",
     status: "published",
@@ -147,6 +148,65 @@ export const news = [
     imageUrl: "/images/news-3.jpg",
   },
 ];
+
+export const defaultContact = {
+  introduction:
+    "Har du spørsmål om kurs, aktiviteter eller lokallag? Ta kontakt med oss.",
+  email: "ostfoldhusflid@gmail.com",
+  phone: "917 77 582",
+  address: "Emil Mørchs vei 25\n2. etg., rom 1\n1653 Sellebakk",
+  people: [
+    {
+      id: "mona-andersen",
+      name: "Mona Andersen",
+      role: "Styreleder",
+      email: "mona@sjokkpris.no",
+      phone: "917 77 582",
+    },
+    {
+      id: "aud-kari-holme",
+      name: "Aud Kari Holme",
+      role: "Nestleder",
+      email: "Audkari.holme@gmail.com",
+      phone: "958 79 367",
+    },
+    {
+      id: "heidi-borstad",
+      name: "Heidi Børstad",
+      role: "Sekretær",
+      email: "heidi.borstad@gmail.com",
+      phone: "952 22 155",
+    },
+    {
+      id: "silja-devine-holhjem",
+      name: "Silja Devine Holhjem",
+      role: "Nettansvarlig",
+      email: "siljadevine@gmail.com",
+      phone: "416 64 904",
+    },
+    {
+      id: "linda-p-vallner",
+      name: "Linda P. Vallner",
+      role: "Styremedlem · Ung Husflidskontakt",
+      email: "lindap.vallner@gmail.com",
+      phone: "97 63 84 24",
+    },
+    {
+      id: "thore-grotvedt",
+      name: "Thore Grøtvedt",
+      role: "Styremedlem",
+      email: "thoregro@gmail.com",
+      phone: "901 35 455",
+    },
+    {
+      id: "julie-mari-brevik",
+      name: "Julie Mari Brevik",
+      role: "Varamedlem",
+      email: "bunad.julie@gmail.com",
+      phone: "993 13 244",
+    },
+  ],
+};
 
 export const municipalities = [
   {

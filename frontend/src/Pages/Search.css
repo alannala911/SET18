@@ -70,21 +70,50 @@
   list-style: none;
 }
 
-.search-results li {
+.search-results > li {
   padding: 24px;
   border: 1px solid #ddd;
   border-radius: 12px;
 }
 
-.search-results h2 {
+.search-group > h2 {
+  margin: 30px 0 14px;
+  font-size: 26px;
+}
+
+.search-results h3 {
   margin: 0 0 10px;
   color: #1f1f1f;
   font-size: 24px;
 }
 
-.search-results p {
-  margin-bottom: 20px;
+.search-subcategory {
+  margin: 0 0 12px;
+}
+
+.search-matches {
+  margin: 0 0 20px;
+  padding-left: 20px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.search-matches li + li {
+  margin-top: 8px;
+}
+
+.search-matches mark,
+.search-results h3 mark,
+.search-subcategory mark {
+  background: #ffe085;
+  color: #1f1f1f;
+}
+
+.search-error {
+  padding: 14px;
+  border: 1px solid #a1203c;
+  border-radius: 8px;
+  color: #75152a;
 }
 
 .search-results a {

@@ -1,3 +1,4 @@
+// Håndterer oppretting, redigering og validering av aktiviteter
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiRequest } from "./api.js";
@@ -422,4 +423,3 @@ export function ActivityEditor() {
     </main>
   );
 }
-

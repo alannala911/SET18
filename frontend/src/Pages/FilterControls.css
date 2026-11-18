@@ -1,0 +1,59 @@
+.activity-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+  gap: 14px;
+  margin: 28px 0;
+  padding: 18px;
+  border: 1px solid #e5c8ce;
+  border-radius: 12px;
+  background: #fffafb;
+}
+
+.activity-controls > label,
+.activity-date-range label {
+  display: grid;
+  gap: 7px;
+  color: #263238;
+  font-weight: 700;
+}
+
+.activity-controls select,
+.activity-controls input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #9a8d91;
+  border-radius: 6px;
+  color: #263238;
+  background: #ffffff;
+  font: inherit;
+}
+
+.activity-advanced-toggle {
+  min-height: 42px;
+  padding: 8px 16px;
+  border: 1px solid #8f2740;
+  border-radius: 6px;
+  color: #8f2740;
+  background: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activity-advanced-toggle[aria-expanded="true"] {
+  color: #ffffff;
+  background: #8f2740;
+}
+
+.activity-date-range {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .activity-date-range { grid-column: auto; }
+}

@@ -1,7 +1,8 @@
+// Håndterer medlemsregistrering, aktivering og tilpassede skjemaer
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { request, useAdminSession } from "./MembershipApi.js";
-import { configurableFields, emptyAddress, membershipTypes } from "./MembershipConfig.js";
+import { configurableFields, defaultCraftTypes, emptyAddress, membershipTypes } from "./MembershipConfig.js";
 import {
   AddressFields,
   CheckField,
@@ -471,7 +472,7 @@ function RegistrationForms({ type, config }) {
         </Section>
         {form.parents.map((parent, index) => (
           <div className="membership-parent" key={index}>
-            <PersonFields title={index === 0 ? "Forelders informasjon" : `Forelder ${index + 1}`} fieldPrefix="parent" validationPrefix={`parents.${index}`} value={parent} onChange={(updated) => setForm({ parents: form.parents.map((item, i) => i === index ? updated : item) })} lockedFields={["firstName", "lastName", "gender", "email", "phone"]} />
+            <PersonFields title="Forelders informasjon" number={index + 1} fieldPrefix="parent" validationPrefix={`parents.${index}`} value={parent} onChange={(updated) => setForm({ parents: form.parents.map((item, i) => i === index ? updated : item) })} lockedFields={["firstName", "lastName", "gender", "email", "phone"]} />
             {index > 0 && <button className="membership-text-button" type="button" onClick={() => setForm({ parents: form.parents.filter((_, i) => i !== index) })}>Fjern denne forelderen</button>}
           </div>
         ))}
@@ -534,7 +535,7 @@ function RegistrationForms({ type, config }) {
         </Section>
         {address("applicant.address", "Søkerens adresse", "applicant.address")}
         <Section title="Håndverkstype">
-          <SelectField label="Velg håndverkstype" fieldKey="craftType" value={form.craftType} onChange={(event) => setForm({ craftType: event.target.value })} required options={["Tekstil", "Skinn og lær", "Tre", "Kurvmaker", "Metall", "Knivmaker", "Keramikk", "Smykker", "Glass", "Duodji", "Rose- og dekormaling", "Annet"]} />
+          <SelectField label="Velg håndverkstype" fieldKey="craftType" value={form.craftType} onChange={(event) => setForm({ craftType: event.target.value })} required options={defaultCraftTypes} />
         </Section>
         {admissionSetting.visible !== false && (
           <Section title={admissionSetting.label || "Vurdering av søknad"}>

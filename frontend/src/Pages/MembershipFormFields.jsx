@@ -1,5 +1,6 @@
+// Inneholder skjemafelt for medlemsregistrering og konfigurerte skjemaer
 import { useContext } from "react";
-import { emptyAddress } from "./MembershipConfig.js";
+import { defaultGenderOptions, emptyAddress } from "./MembershipConfig.js";
 import { FormConfigContext } from "./MembershipFormContext.js";
 
 export function Field({
@@ -100,14 +101,14 @@ export function SelectField({ label, value, onChange, options, required = false,
   );
 }
 
-export function Section({ title, children, description }) {
+export function Section({ title, children, description, number }) {
   const formConfig = useContext(FormConfigContext);
   const setting = formConfig?.sections?.[formConfig.flow]?.[title] || {};
   if (setting.visible === false) return null;
   const sectionDescription = Object.hasOwn(setting, "description") ? setting.description : description;
   return (
     <section className="membership-section">
-      <h2>{setting.label || title}</h2>
+      <h2>{setting.label || title}{number != null && ` ${number}`}</h2>
       {sectionDescription && <p className="membership-muted">{sectionDescription}</p>}
       <div className="membership-grid">{children}</div>
     </section>
@@ -140,15 +141,15 @@ export function AddressFields({ value = emptyAddress, onChange, fieldPrefix, val
   ));
 }
 
-export function PersonFields({ title, value, onChange, includeEmail = true, includePhone = true, fieldPrefix, validationPrefix = fieldPrefix, validationErrors, forceRequired = false, forceVisible = false, forceVisibleFields = [], optionalFields = [], loginContactNotes = false, lockedFields = [] }) {
+export function PersonFields({ title, number, value, onChange, includeEmail = true, includePhone = true, fieldPrefix, validationPrefix = fieldPrefix, validationErrors, forceRequired = false, forceVisible = false, forceVisibleFields = [], optionalFields = [], loginContactNotes = false, lockedFields = [] }) {
   const set = (key) => (event) => onChange({ ...value, [key]: event.target.value });
   const isForcedVisible = (key) => forceRequired || forceVisible || lockedFields.includes(key) || forceVisibleFields.includes(key);
   return (
-    <Section title={title}>
+    <Section title={title} number={number}>
       <Field label="Fornavn" fieldKey={`${fieldPrefix}.firstName`} validationKey={`${validationPrefix}.firstName`} validationErrors={validationErrors} value={value.firstName} onChange={set("firstName")} required forceRequired={forceRequired || lockedFields.includes("firstName")} forceVisible={isForcedVisible("firstName")} autoComplete="given-name" />
       <Field label="Mellomnavn (valgfritt)" fieldKey={`${fieldPrefix}.middleName`} validationKey={`${validationPrefix}.middleName`} validationErrors={validationErrors} value={value.middleName} onChange={set("middleName")} forceVisible={isForcedVisible("middleName")} autoComplete="additional-name" />
       <Field label="Etternavn" fieldKey={`${fieldPrefix}.lastName`} validationKey={`${validationPrefix}.lastName`} validationErrors={validationErrors} value={value.lastName} onChange={set("lastName")} required forceRequired={forceRequired || lockedFields.includes("lastName")} forceVisible={isForcedVisible("lastName")} autoComplete="family-name" />
-      <SelectField label="Kjønn" fieldKey={`${fieldPrefix}.gender`} validationKey={`${validationPrefix}.gender`} validationErrors={validationErrors} value={value.gender} onChange={set("gender")} options={["Mann", "Kvinne", "Annet"]} required forceRequired={forceRequired || lockedFields.includes("gender")} forceVisible={isForcedVisible("gender")} />
+      <SelectField label="Kjønn" fieldKey={`${fieldPrefix}.gender`} validationKey={`${validationPrefix}.gender`} validationErrors={validationErrors} value={value.gender} onChange={set("gender")} options={defaultGenderOptions} required forceRequired={forceRequired || lockedFields.includes("gender")} forceVisible={isForcedVisible("gender")} />
       {includeEmail && <Field label="E-post" fieldKey={`${fieldPrefix}.email`} validationKey={`${validationPrefix}.email`} validationErrors={validationErrors} type="email" value={value.email} onChange={set("email")} required optional={optionalFields.includes("email")} forceRequired={forceRequired || lockedFields.includes("email")} forceVisible={isForcedVisible("email")} hint={loginContactNotes ? "NB: Denne e-posten vil brukes til innlogging" : undefined} autoComplete="email" />}
       {includePhone && <Field label="Telefonnummer" fieldKey={`${fieldPrefix}.phone`} validationKey={`${validationPrefix}.phone`} validationErrors={validationErrors} type="tel" value={value.phone} onChange={set("phone")} required optional={optionalFields.includes("phone")} forceRequired={forceRequired || lockedFields.includes("phone")} forceVisible={isForcedVisible("phone")} hint={loginContactNotes ? "NB: Dette telefonnummeret vil brukes til innlogging" : undefined} autoComplete="tel" />}
     </Section>

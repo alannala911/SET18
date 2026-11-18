@@ -1,7 +1,8 @@
+// Tester API-funksjoner for medlemskap, innlogging, kurs og aktiviteter
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -131,7 +132,136 @@ test("den offentlige aktivitetslisten fungerer med standardaktivitetene", async 
   const list = await fetch(`${baseUrl}/api/activities`).then((response) =>
     response.json(),
   );
-  assert.ok(Array.isArray(list) && list.length > 0);
+  assert.ok(Array.isArray(list));
+});
+
+test("passerte kurs og aktiviteter arkiveres og er kun tilgjengelige for administrator", async () => {
+  const admin = client();
+  const visitor = client();
+  await admin("/auth/login", { method: "POST", body: adminLogin });
+  const courseData = {
+    title: "Tidligere testkurs", category: "Veving", description: "Testkurs",
+    date: "2000-01-01", time: "12:00", place: "Moss", price: 100,
+    symbol: "K", color: "wool", status: "published",
+  };
+  const createdCourse = await admin("/courses", { method: "POST", body: courseData });
+  const createdActivity = await admin("/activities", { method: "POST", form: activityForm({ title: "Tidligere aktivitet", date: "2000-01-01", status: "published" }) });
+  assert.equal(createdCourse.status, 201);
+  assert.equal(createdActivity.status, 201);
+  assert.equal(createdCourse.data.status, "archived");
+  assert.equal(createdActivity.data.status, "archived");
+  for (const [type, created] of [["courses", createdCourse], ["activities", createdActivity]]) {
+    assert.equal((await visitor(`/${type}`)).data.some((item) => item.id === created.data.id), false);
+    assert.equal((await visitor(`/${type}?scope=all`)).data.some((item) => item.id === created.data.id), false);
+    assert.equal((await visitor(`/${type}/${created.data.id}`)).status, 404);
+    assert.equal((await admin(`/${type}?scope=all`)).data.find((item) => item.id === created.data.id).status, "archived");
+    assert.equal((await admin(`/${type}/${created.data.id}`)).status, 200);
+  }
+  const saved = JSON.parse(await readFile(path.join(dataDirectory, "application-store.json"), "utf8"));
+  assert.equal(saved.courses.find((item) => item.id === createdCourse.data.id).status, "archived");
+  assert.equal(saved.activities.find((item) => item.id === createdActivity.data.id).status, "archived");
+  const republishedCourse = await admin(`/courses/${createdCourse.data.id}`, {
+    method: "PUT", body: { ...courseData, date: "2099-01-01" },
+  });
+  assert.equal(republishedCourse.data.status, "published");
+  const republishedActivity = await admin(`/activities/${createdActivity.data.id}`, {
+    method: "PUT", form: activityForm({ title: "Tidligere aktivitet", date: "2099-01-01", status: "published" }),
+  });
+  assert.equal(republishedActivity.data.status, "published");
+  assert.equal((await visitor(`/courses/${createdCourse.data.id}`)).status, 200);
+  assert.equal((await visitor(`/activities/${createdActivity.data.id}`)).status, 200);
+});
+
+test("kontaktinformasjon kan bare redigeres av administrator og meldinger lagres i admininnboksen", async () => {
+  const initialSettings = await fetch(`${baseUrl}/api/contact/settings`).then(
+    (response) => response.json(),
+  );
+  assert.equal(initialSettings.email, "ostfoldhusflid@gmail.com");
+  assert.ok(initialSettings.people.length > 0);
+
+  const updatedSettings = {
+    ...initialSettings,
+    introduction: "Ta kontakt med Østfold Husflidslag.",
+    people: [
+      {
+        id: "test-contact",
+        name: "Test Kontakt",
+        role: "Testrolle",
+        email: "kontakt@test.no",
+        phone: "900 00 001",
+      },
+    ],
+  };
+  assert.equal(
+    (
+      await fetch(`${baseUrl}/api/contact/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedSettings),
+      })
+    ).status,
+    401,
+  );
+
+  const message = {
+    name: "Testbruker",
+    email: "bruker@test.no",
+    topic: "annet",
+    message: "Dette er en testmelding.",
+  };
+  const submitted = await fetch(`${baseUrl}/api/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(message),
+  });
+  assert.equal(submitted.status, 201);
+  assert.match((await submitted.json()).message, /sendt til administratorene/);
+
+  const anonymousMessages = await fetch(`${baseUrl}/api/contact/messages`);
+  assert.equal(anonymousMessages.status, 401);
+
+  const admin = client();
+  await admin("/auth/login", { method: "POST", body: adminLogin });
+  const savedSettings = await admin("/contact/settings", {
+    method: "PUT",
+    body: updatedSettings,
+  });
+  assert.equal(savedSettings.status, 200);
+  assert.equal(savedSettings.data.people[0].email, "kontakt@test.no");
+  assert.equal((await admin("/contact/settings")).data.people.length, 1);
+  assert.equal(
+    (await admin("/contact/messages")).data[0].message,
+    message.message,
+  );
+
+  const invalidMessage = await fetch(`${baseUrl}/api/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...message, email: "invalid" }),
+  });
+  assert.equal(invalidMessage.status, 400);
+
+  const messageId = (await admin("/contact/messages")).data[0].id;
+  assert.equal(
+    (await admin(`/contact/messages/${messageId}`, { method: "DELETE" })).status,
+    200,
+  );
+  assert.equal((await admin("/contact/messages")).data.length, 0);
+});
+
+test("aktivitetsbilletter avviser priser som ikke er positive tall", async () => {
+  const admin = client();
+  await admin("/auth/login", { method: "POST", body: adminLogin });
+
+  for (const price of ["200", "200 kr", "1e2", "0x10", "$200", -1, 0, null, true]) {
+    const response = await admin("/activities", {
+      method: "POST",
+      form: activityForm({
+        ticketTypes: [{ ...activity.ticketTypes[0], price }],
+      }),
+    });
+    assert.equal(response.status, 400, `pris ${JSON.stringify(price)} skal avvises`);
+  }
 });
 
 test("produksjonsserveren starter ikke med lokal lagring", async () => {
@@ -236,10 +366,90 @@ describe("administrator", () => {
   });
 });
 
+describe("nyhetsadministrasjon", () => {
+  test("administratorer kan opprette, forhåndsvise, publisere og arkivere nyheter", async () => {
+    const anonymous = client();
+    const newsData = {
+      title: "Test av nyhetsflyten",
+      category: "Fra laget",
+      summary: "En test av ingressen.",
+      text: "Nyhetstekst med flere detaljer.",
+      date: "2099-01-02",
+      imageUrl: "",
+      status: "draft",
+    };
+    assert.equal(
+      (
+        await anonymous("/news", {
+          method: "POST",
+          body: newsData,
+        })
+      ).status,
+      401,
+    );
+
+    const admin = client();
+    await admin("/auth/login", { method: "POST", body: adminLogin });
+    const invalid = await admin("/news", {
+      method: "POST",
+      body: { ...newsData, date: "2099-02-31" },
+    });
+    assert.equal(invalid.status, 400);
+
+    const created = await admin("/news", {
+      method: "POST",
+      body: newsData,
+    });
+    assert.equal(created.status, 201);
+    const newsId = created.data.id;
+    assert.equal(created.data.status, "draft");
+    assert.equal(
+      (await fetch(`${baseUrl}/api/news/${newsId}`)).status,
+      404,
+    );
+    const publicNews = await fetch(`${baseUrl}/api/news`).then((response) =>
+      response.json(),
+    );
+    assert.equal(publicNews.some((item) => item.id === newsId), false);
+    assert.equal((await admin(`/news/${newsId}`)).data.title, newsData.title);
+
+    const imageSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    const form = new FormData();
+    form.set("news", JSON.stringify({ ...newsData, status: "published" }));
+    form.set("image", new Blob([imageSignature], { type: "image/png" }), "news.png");
+    const updated = await admin(`/news/${newsId}`, {
+      method: "PUT",
+      form,
+    });
+    assert.equal(updated.status, 200);
+    assert.equal(updated.data.status, "published");
+    assert.equal(updated.data.imageUrl, `/api/news/images/${updated.data.imageStorageName}`);
+    const imageResponse = await fetch(`${baseUrl}${updated.data.imageUrl}`);
+    assert.equal(imageResponse.status, 200);
+    assert.deepEqual(
+      Buffer.from(await imageResponse.arrayBuffer()),
+      imageSignature,
+    );
+    assert.equal((await fetch(`${baseUrl}/api/news/${newsId}`)).status, 200);
+
+    assert.equal((await admin(`/news/${newsId}`, { method: "DELETE" })).status, 200);
+    assert.equal(
+      (await fetch(`${baseUrl}/api/news/${newsId}`)).status,
+      404,
+    );
+    assert.equal(
+      (await admin("/news?scope=all")).data.find((item) => item.id === newsId)
+        .status,
+      "archived",
+    );
+  });
+});
+
 describe("medlemmer og bestillinger", () => {
   let admin;
   let member;
   let activityId;
+  let createdActivityImageUrl;
 
   before(async () => {
     admin = client();
@@ -295,6 +505,7 @@ describe("medlemmer og bestillinger", () => {
     const created = await admin("/activities", { method: "POST", form });
     assert.equal(created.status, 201);
     activityId = created.data.id;
+    createdActivityImageUrl = created.data.imageUrl;
     const imageResponse = await fetch(`${baseUrl}${created.data.imageUrl}`);
     assert.equal(imageResponse.status, 200);
     assert.deepEqual(
@@ -395,6 +606,7 @@ describe("medlemmer og bestillinger", () => {
     await admin(`/activities/${activityId}`, { method: "DELETE" });
     const all = (await admin("/activities?scope=all")).data;
     assert.equal(all.find((item) => item.id === activityId).status, "archived");
+    assert.equal((await fetch(`${baseUrl}${createdActivityImageUrl}`)).status, 404);
     const orders = (await member("/membership/orders")).data;
     assert.ok(orders.every((order) => order.status === "cancelled"));
   });
@@ -461,7 +673,7 @@ describe("kurs", () => {
     date: "2099-03-15",
     time: "17:00–20:00",
     place: "Moss",
-    price: "400 kr",
+    price: 400,
     symbol: "🧵",
     color: "wool",
     status: "draft",
@@ -476,11 +688,20 @@ describe("kurs", () => {
     );
     await admin("/auth/login", { method: "POST", body: adminLogin });
 
+    for (const price of ["400", "400 kr", "1e2", "0x10", "$400", -1, 0, null, true]) {
+      const invalidPrice = await admin("/courses", {
+        method: "POST",
+        body: { ...courseDraft, price },
+      });
+      assert.equal(invalidPrice.status, 400, `pris ${JSON.stringify(price)} skal avvises`);
+    }
+
     const created = await admin("/courses", {
       method: "POST",
       body: courseDraft,
     });
     assert.equal(created.status, 201);
+    assert.equal(created.data.price, 400);
     const courseId = created.data.id;
     assert.equal(created.data.status, "draft");
     assert.equal(

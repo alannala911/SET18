@@ -1,3 +1,4 @@
+// Inneholder hjelpefunksjoner for e-postadresser, passord og sikkerhetstokener
 import {
   createHash,
   randomBytes,

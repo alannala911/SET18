@@ -1,3 +1,4 @@
+// Oppretter offentlige leseruter for statisk innhold
 import express from "express";
 
 export function contentRouter(items, notFoundMessage) {

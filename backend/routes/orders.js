@@ -1,3 +1,4 @@
+// Håndterer API-rutene for billettbestillinger og ordre
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { updateStore, readStore } from "../lib/store.js";

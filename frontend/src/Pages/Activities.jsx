@@ -1,19 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+// Håndterer aktivitetsliste, filtrering, arkivering og administratorhandlinger
+import { useEffect, useState } from "react";
 import { apiRequest, useCurrentMember } from "./api.js";
 import {
   ActivityAdminActions,
-  ActivityControls,
   ActivityHero,
   ActivityInformation,
+  ActivityListItem,
   ActivityResults,
   RemoveActivityDialog,
 } from "./ActivityPageComponents.jsx";
+import { FilterControls } from "./FilterControls.jsx";
 import {
   activitiesPerPage,
-  addCalendarDays,
+} from "./activityUtils.js";
+import {
   compareActivities,
   getTodayDate,
-} from "./activityUtils.js";
+  matchesDateFilter,
+} from "./dateSortFilters.js";
 import "./Activities.css";
 
 export default function Activities() {
@@ -36,12 +40,6 @@ export default function Activities() {
   const todayDate = getTodayDate();
   const member = useCurrentMember();
 
-  const activityListPath = isAdminAuthenticated ? "/activities?scope=all" : "/activities";
-  const reloadActivities = useCallback(
-    () => apiRequest(activityListPath).then(setActivityList).catch((loadError) => setActivityActionError(loadError.message)),
-    [activityListPath],
-  );
-
   function toggleAdvancedOptions() {
     if (isAdvancedOpen) {
       setCustomStartDate("");
@@ -51,15 +49,12 @@ export default function Activities() {
     setIsAdvancedOpen(!isAdvancedOpen);
   }
 
-  const filteredActivities = activityList.filter((activity) => {
-    const matchesPeriod = {
-      today: activity.date === todayDate,
-      "next-seven-days": activity.date >= todayDate && activity.date <= addCalendarDays(todayDate, 6),
-      "next-thirty-days": activity.date >= todayDate && activity.date <= addCalendarDays(todayDate, 29),
-    }[periodFilter] ?? true;
-    return matchesPeriod && (!customStartDate || activity.date >= customStartDate) &&
-      (!customEndDate || activity.date <= customEndDate);
-  }).sort((first, second) => compareActivities(first, second, sortBy, sortDirection));
+  const activeActivities = activityList.filter((activity) =>
+    activity.status !== "archived" && (isAdminAuthenticated || (activity.status ?? "published") === "published"));
+  const archivedActivities = isAdminAuthenticated ? activityList.filter((activity) => activity.status === "archived") : [];
+  const filteredActivities = activeActivities.filter((activity) =>
+    matchesDateFilter(activity.date, todayDate, periodFilter, customStartDate, customEndDate)
+  ).sort((first, second) => compareActivities(first, second, sortBy, sortDirection));
   const totalPages = Math.max(1, Math.ceil(filteredActivities.length / activitiesPerPage));
   const visiblePage = Math.min(currentPage, totalPages);
   const visibleActivities = filteredActivities.slice(
@@ -67,41 +62,46 @@ export default function Activities() {
     visiblePage * activitiesPerPage
   );
 
-  const refreshAdminSession = useCallback(async () => {
-    try {
-      await apiRequest("/auth/me");
-      setIsAdminAuthenticated(true);
-    } catch (sessionError) {
-      setIsAdminAuthenticated(false);
-      if (sessionError.status !== 401) setActivityActionError(sessionError.message);
-    }
-  }, []);
-
   useEffect(() => {
     let isComponentMounted = true;
-    apiRequest("/auth/me").catch((sessionError) => {
-      if (sessionError.status !== 401) throw sessionError;
-      return null;
-    })
-      .then(async (adminSession) => [await apiRequest(adminSession ? "/activities?scope=all" : "/activities"), adminSession])
-      .then(([loadedActivities, adminSession]) => {
-        if (!isComponentMounted) return;
-        if (!Array.isArray(loadedActivities)) throw new Error("Aktivitetslisten har et ugyldig format.");
-        setActivityList(loadedActivities);
-        setIsAdminAuthenticated(Boolean(adminSession));
-      }).catch((loadError) => {
-        if (isComponentMounted) setActivityLoadError(loadError.message);
+    let requestSequence = 0;
+    function refreshActivities() {
+      const sequence = ++requestSequence;
+      apiRequest("/auth/me").catch((sessionError) => {
+        if (sessionError.status !== 401) throw sessionError;
+        return null;
       })
-      .finally(() => {
-        if (isComponentMounted) setIsLoadingActivities(false);
-      });
+        .then(async (adminSession) => [await apiRequest(adminSession ? "/activities?scope=all" : "/activities"), adminSession])
+        .then(([loadedActivities, adminSession]) => {
+          if (!isComponentMounted || sequence !== requestSequence) return;
+          if (!Array.isArray(loadedActivities)) throw new Error("Aktivitetslisten har et ugyldig format.");
+          setActivityLoadError("");
+          setActivityList(loadedActivities);
+          setIsAdminAuthenticated(Boolean(adminSession));
+        }).catch((loadError) => {
+          if (isComponentMounted && sequence === requestSequence) {
+            setIsAdminAuthenticated(false);
+            setActivityList([]);
+            setActivityLoadError(loadError.message);
+          }
+        })
+        .finally(() => {
+          if (isComponentMounted && sequence === requestSequence) setIsLoadingActivities(false);
+        });
+    }
 
-    window.addEventListener("set18-auth-change", refreshAdminSession);
+    refreshActivities();
+    function sessionChanged() {
+      setIsAdminAuthenticated(false);
+      setActivityList((current) => current.filter((item) => (item.status ?? "published") === "published"));
+      refreshActivities();
+    }
+    window.addEventListener("set18-auth-change", sessionChanged);
     return () => {
       isComponentMounted = false;
-      window.removeEventListener("set18-auth-change", refreshAdminSession);
+      window.removeEventListener("set18-auth-change", sessionChanged);
     };
-  }, [refreshAdminSession]);
+  }, []);
 
   function beginActivityRemoval(activityToRemove) {
     setActivityActionError("");
@@ -119,9 +119,8 @@ export default function Activities() {
     setActivityActionError("");
     try {
       await apiRequest(`/activities/${encodeURIComponent(activityPendingRemoval.id)}`, { method: "DELETE" });
-      setActivityList((currentActivities) =>
-        currentActivities.filter((activityData) => activityData.id !== activityPendingRemoval.id)
-      );
+      setActivityList((currentActivities) => currentActivities.map((activityData) =>
+        activityData.id === activityPendingRemoval.id ? { ...activityData, status: "archived" } : activityData));
       setActivityPendingRemoval(null);
       setRemovalConfirmationStage(1);
     } catch (removalError) {
@@ -154,10 +153,10 @@ export default function Activities() {
             <h2>Kommende aktiviteter</h2>
           </section>
           <span className="activity-count">
-            {filteredActivities.length} av {activityList.length} aktiviteter
+            {filteredActivities.length} av {activeActivities.length} aktiviteter
           </span>
         </header>
-        <ActivityControls
+        <FilterControls
           periodFilter={periodFilter}
           sortBy={sortBy}
           sortDirection={sortDirection}
@@ -190,7 +189,7 @@ export default function Activities() {
           activityLoadError={activityLoadError}
           activityActionError={activityActionError}
           isLoading={isLoadingActivities}
-          activityCount={activityList.length}
+          activityCount={activeActivities.length}
           filteredActivities={filteredActivities}
           visibleActivities={visibleActivities}
           totalPages={totalPages}
@@ -199,7 +198,6 @@ export default function Activities() {
           member={member}
           isAdmin={isAdminAuthenticated}
           onRemove={beginActivityRemoval}
-          onPurchased={reloadActivities}
           onPageChange={setCurrentPage}
         />
         <ActivityInformation />
@@ -208,6 +206,19 @@ export default function Activities() {
           isEditing={isEditingActivities}
           onToggleEditing={toggleActivityEditing}
         />
+        {isAdminAuthenticated && !isLoadingActivities && (
+          <section className="activity-archive" aria-labelledby="activity-archive-title">
+            <h2 id="activity-archive-title">Arkiv for aktiviteter</h2>
+            <p>Arkiverte aktiviteter er bare synlige for administratorer.</p>
+            {archivedActivities.length === 0
+              ? <p>Ingen arkiverte aktiviteter.</p>
+              : <section className="activity-list" aria-label="Arkiverte aktiviteter">
+                {archivedActivities.map((activity, index) => (
+                  <ActivityListItem key={activity.id} activity={activity} index={index} showEditControls member={member} isAdmin />
+                ))}
+              </section>}
+          </section>
+        )}
       </section>
       <RemoveActivityDialog
         activityToRemove={activityPendingRemoval}

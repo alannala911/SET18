@@ -1,3 +1,4 @@
+// Håndterer medlems- og administratorinnlogging og min side
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "./api.js";
@@ -125,7 +126,11 @@ export default function MyPage() {
     setBusy(true);
 
     try {
-      const loginOptions = { method: "POST", body: JSON.stringify(credentials) };
+      const loginOptions = {
+        method: "POST",
+        body: JSON.stringify(credentials),
+        headers: jsonHeaders,
+      };
       try {
         await apiRequest("/membership/login", loginOptions);
       } catch (memberLoginError) {

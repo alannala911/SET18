@@ -1,3 +1,4 @@
+// Håndterer tekstredigering for aktivitetsbeskrivelser
 import { useEffect, useRef } from "react";
 
 export function RichTextEditor({ htmlContent, onHtmlContentChange }) {
@@ -89,4 +90,3 @@ export function RichTextEditor({ htmlContent, onHtmlContentChange }) {
     </section>
   );
 }
-

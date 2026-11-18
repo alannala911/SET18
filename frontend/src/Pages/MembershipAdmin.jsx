@@ -1,46 +1,11 @@
+// Håndterer administrasjon av medlemskap, søknader og skjemaoppsett
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminMembers from "./AdminMembers.jsx";
 import { API, request, useAdminSession } from "./MembershipApi.js";
 import { configurableFields, configurableSections, createBuilderField, membershipTypes } from "./MembershipConfig.js";
 import { BuilderFieldEditor } from "./MembershipBuilderFieldEditor.jsx";
-import { Message, Section, TextAreaField } from "./MembershipFormFields.jsx";
-
-function OfferTestPanel() {
-  const [channel, setChannel] = useState("email");
-  const [message, setMessage] = useState("");
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
-
-  async function sendTest(event) {
-    event.preventDefault();
-    setError("");
-    try {
-      setResult(await request("/admin/offers/test", { method: "POST", body: JSON.stringify({ channel, message }) }));
-    } catch (sendError) {
-      setResult(null);
-      setError(sendError.message);
-    }
-  }
-
-  return (
-    <form className="membership-form" onSubmit={sendTest}>
-      <Section title="Test av tilbud og kampanjer" description="Dummy-utsending til medlemmer som har samtykket. Ingen e-post eller SMS blir faktisk sendt.">
-        <label className="membership-field">
-          <span>Kanal</span>
-          <select value={channel} onChange={(event) => setChannel(event.target.value)}>
-            <option value="email">E-post</option>
-            <option value="sms">SMS</option>
-          </select>
-        </label>
-        <TextAreaField label="Melding" value={message} onChange={(event) => setMessage(event.target.value)} />
-        <button className="membership-submit">Send test</button>
-        <Message error={error} success={result?.message} />
-        {result?.recipients.length > 0 && <ul>{result.recipients.map((contact) => <li key={contact}>{contact}</li>)}</ul>}
-      </Section>
-    </form>
-  );
-}
+import { Message, Section } from "./MembershipFormFields.jsx";
 
 function AdminPanel() {
   const { authenticated, setAuthenticated, checking: checkingSession } = useAdminSession();
@@ -76,11 +41,7 @@ function AdminPanel() {
     setError("");
     setSuccess("");
     try {
-      const options = JSON.parse(config.optionsText || "{}");
-      if (options === null || Array.isArray(options) || typeof options !== "object") {
-        throw new Error("Alternativene må være et JSON-objekt.");
-      }
-      const regions = config.regionsText.split("\n").map((line) => {
+      const regions = editableConfig.regionsText.split("\n").map((line) => {
         const [name, ...chapters] = line.split(":");
         return { name: name.trim(), chapters: chapters.join(":").split(",").map((item) => item.trim()).filter(Boolean) };
       }).filter((region) => region.name);
@@ -98,14 +59,14 @@ function AdminPanel() {
         "child.email",
         "child.phone",
       ])];
-      const payload = { ...config, regions, fields, requiredFields, options };
+      const payload = { ...config, regions, fields, requiredFields };
       delete payload.regionsText;
-      delete payload.optionsText;
+      delete payload.options;
       const result = await request("/admin/config", { method: "PUT", body: JSON.stringify(payload) });
       setConfig({
         ...payload,
+        options: config.options,
         regionsText: regions.map((item) => `${item.name}: ${item.chapters.join(", ")}`).join("\n"),
-        optionsText: JSON.stringify(options, null, 2),
       });
       setSuccess(result.message || "Innstillingene er lagret.");
     } catch (saveError) {
@@ -191,17 +152,21 @@ function AdminPanel() {
   const editableConfig = config && {
     ...config,
     regionsText: config.regionsText || (config.regions || []).map((item) => `${item.name}: ${(item.chapters || []).join(", ")}`).join("\n"),
-    optionsText: config.optionsText || JSON.stringify(config.options || {}, null, 2),
   };
   return (
     <div className="membership-admin">
       <div className="membership-admin-heading"><h2>Medlemskap og søknader</h2><button className="membership-secondary" type="button" onClick={logout}>Logg ut</button></div>
       <Message error={error} />
       <AdminMembers />
-      <OfferTestPanel />
       {editableConfig && <form className="membership-form" onSubmit={saveConfig}>
         <Section title="Aktive skjemaer">
           {membershipTypes.map(([key, label]) => <label className="membership-check" key={key}><input type="checkbox" checked={editableConfig.membershipTypes?.[key] !== false} onChange={(event) => setConfig({ ...editableConfig, membershipTypes: { ...editableConfig.membershipTypes, [key]: event.target.checked } })} />{label}</label>)}
+          {(editableConfig.customForms || []).map((form, index) => (
+            <label className="membership-check" key={form.id}>
+              <input type="checkbox" checked={form.active} onChange={(event) => updateCustomForm(index, { active: event.target.checked })} />
+              {form.name || "Skjema uten navn"}
+            </label>
+          ))}
         </Section>
         <Section title="Felt i skjemaene" description="Slå felt av/på, velg om de er obligatoriske, og endre etiketten som vises. Alders- og samtykkekrav valideres også av backend.">
           {membershipTypes.map(([flow, flowLabel]) => (
@@ -260,6 +225,9 @@ function AdminPanel() {
                 return (
                   <div className="membership-content-setting" key={title}>
                     <strong>{title}</strong>
+                    {flow === "minor" && title === "Forelders informasjon" && (
+                      <p className="membership-muted">Overskrift og hjelpetekst gjelder alle foreldre. Foreldernummer legges til automatisk.</p>
+                    )}
                     <label className="membership-field">
                       <span>Overskrift</span>
                       <input value={setting.label ?? ""} placeholder={title} maxLength={120} onChange={(event) => update({ label: event.target.value })} />
@@ -345,9 +313,6 @@ function AdminPanel() {
               { id: `custom_${suffix}`, name: "Nytt medlemskapsskjema", description: "", active: false, includeAgreements: true, fields: [] },
             ]);
           }}>Opprett blankt skjema</button>
-        </Section>
-        <Section title="Valg i nedtrekkslister" description="JSON med alternativ per skjema og feltnøkkel. Kjønnseksempel: { &quot;regular&quot;: { &quot;person.gender&quot;: [&quot;Mann&quot;, &quot;Kvinne&quot;, &quot;Annet&quot;] } }">
-          <label className="membership-field membership-grid-wide"><span>Alternativer (JSON)</span><textarea rows="8" value={editableConfig.optionsText} onChange={(event) => setConfig({ ...editableConfig, optionsText: event.target.value })} /></label>
         </Section>
         <Section title="Regioner og lokallag" description="Én region per linje: Regionnavn: lokallag 1, lokallag 2">
           <label className="membership-field membership-grid-wide"><span>Tilgjengelige regioner og lokallag</span><textarea rows="8" value={editableConfig.regionsText} onChange={(event) => setConfig({ ...editableConfig, regionsText: event.target.value })} /></label>

@@ -1,3 +1,4 @@
+// Definerer medlemskapstyper, skjemafelter og standardvalg
 export const membershipTypes = [
   ["regular", "Vanlig medlemskap"],
   ["minor", "Mindreårig medlemskap"],
@@ -16,9 +17,11 @@ export const builderFieldTypes = [
   ["section", "Innholdsboks"],
 ];
 export const presetFieldTypes = builderFieldTypes.filter(([type]) => type !== "file");
+export const defaultGenderOptions = ["Mann", "Kvinne", "Annet"];
+export const defaultCraftTypes = ["Tekstil", "Skinn og lær", "Tre", "Kurvmaker", "Metall", "Knivmaker", "Keramikk", "Smykker", "Glass", "Duodji", "Rose- og dekormaling", "Annet"];
 export const configurableSections = {
   regular: ["Alderskontroll", "Personlig informasjon", "Passord", "Adresse", "Velg lokallag"],
-  minor: ["Barnets informasjon", "Barnets alder", "Forelders informasjon", "Forelder 2", "Forelder 3", "Forelder 4", "Passord", "Adresse", "Velg lokallag"],
+  minor: ["Barnets informasjon", "Barnets alder", "Forelders informasjon", "Passord", "Adresse", "Velg lokallag"],
   gift: ["Kjøperens alderskontroll", "Kjøperens personlige informasjon", "Kjøperens adresse", "Mottakerens alderskontroll", "Mottakerens personlige informasjon", "Mottakerens adresse", "Foresattens informasjon", "Velg lokallag"],
   craft: ["Bedriftsinformasjon", "Bedriftens adresse", "Søkerens personinformasjon", "Søkerens fødselsdato og adresse", "Søkerens adresse", "Håndverkstype", "Last opp dokumentasjon", "Juryert opptak", "Velg lokallag"],
 };
