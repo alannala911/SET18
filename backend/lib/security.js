@@ -18,6 +18,7 @@ export function validEmail(email) {
 }
 
 export async function hashPassword(password) {
+  // Tilfeldig salt og scrypt gjør passordhashen vanskelig å forhåndsberegne eller gjette
   const salt = randomBytes(16);
   const derived = await scrypt(password, salt, 64);
   return `scrypt:${salt.toString("hex")}:${derived.toString("hex")}`;
@@ -33,10 +34,12 @@ export async function verifyPassword(password, encoded) {
   )
     return false;
   const actual = await scrypt(password, Buffer.from(saltHex, "hex"), 64);
+  // Konstanttids-sammenligning unngår at svartiden avslører deler av hashverdien
   return timingSafeEqual(actual, Buffer.from(hashHex, "hex"));
 }
 
 export function createToken() {
+  // Tokenet brukes i lenker/økter; bare hashverdien lagres i applikasjonsdata
   return randomBytes(32).toString("base64url");
 }
 

@@ -51,6 +51,7 @@ export default function Activities() {
 
   const activeActivities = activityList.filter((activity) =>
     activity.status !== "archived" && (isAdminAuthenticated || (activity.status ?? "published") === "published"));
+  // Administratoren kan se tidligere aktiviteter og utkast; arkiv listes separat
   const archivedActivities = isAdminAuthenticated ? activityList.filter((activity) => activity.status === "archived") : [];
   const filteredActivities = activeActivities.filter((activity) =>
     matchesDateFilter(activity.date, todayDate, periodFilter, customStartDate, customEndDate)
@@ -67,6 +68,7 @@ export default function Activities() {
     let requestSequence = 0;
     function refreshActivities() {
       const sequence = ++requestSequence;
+      // Sekvensnummer hindrer at et eldre svar overskriver nyere data etter innloggingsendring
       apiRequest("/auth/me").catch((sessionError) => {
         if (sessionError.status !== 401) throw sessionError;
         return null;
@@ -118,6 +120,7 @@ export default function Activities() {
     setIsRemovingActivity(true);
     setActivityActionError("");
     try {
+      // Serveren arkiverer og frigjør eventuelle bekreftede billetter
       await apiRequest(`/activities/${encodeURIComponent(activityPendingRemoval.id)}`, { method: "DELETE" });
       setActivityList((currentActivities) => currentActivities.map((activityData) =>
         activityData.id === activityPendingRemoval.id ? { ...activityData, status: "archived" } : activityData));

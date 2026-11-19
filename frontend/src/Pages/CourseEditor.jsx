@@ -48,6 +48,7 @@ export default function CourseEditor() {
     let isComponentMounted = true;
 
     async function loadCourse() {
+      // Hent først kursdata etter at serveren har bekreftet administratorøkten
       await apiRequest("/auth/me");
       if (!isComponentMounted) return;
       setIsAdminAuthenticated(true);
@@ -98,6 +99,7 @@ export default function CourseEditor() {
     setFormError("");
     try {
       await apiRequest(
+        // Samme skjema håndterer opprettelse og endring; ID-en avgjør metode og endepunkt
         isEditingCourse ? `/courses/${encodeURIComponent(courseId)}` : "/courses",
         {
           method: isEditingCourse ? "PUT" : "POST",

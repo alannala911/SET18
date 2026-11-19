@@ -8,6 +8,7 @@ export function getActivityValidationErrors({
   selectedImageFile,
   isEditingActivity,
 }) {
+  // Valider hele aktivitetsutkastet samlet, slik at brukeren får alle feil før publisering
   const validationErrors = [];
   if (!activityDraft.title.trim()) validationErrors.push("Tittel må fylles inn.");
   if (!activityDraft.date || Number.isNaN(Date.parse(`${activityDraft.date}T00:00:00`))) {
@@ -58,6 +59,7 @@ export function getActivityValidationErrors({
     }
   });
   const totalTicketQuantity = ticketTypes.reduce((total, ticketType) => total + Number(ticketType.quantity || 0), 0);
+  // Summen av billettypene kan ikke love bort flere plasser enn aktivitetens totalramme
   if (totalTicketQuantity > ticketCapacity) {
     validationErrors.push("Summen av billettypene kan ikke overstige tilgjengelig kapasitet.");
   }

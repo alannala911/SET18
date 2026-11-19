@@ -27,6 +27,7 @@ const defaultOrigins = [
 ];
 
 if (process.env.NODE_ENV === "production") {
+  // Stopp oppstart dersom kritiske produksjonsinnstillinger mangler eller bruker usikre URL-er
   const requiredSettings = [
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD",
@@ -87,6 +88,7 @@ app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "same-origin");
   const origin = req.get("Origin");
+  // Avvis ukjente opprinnelser før cookie-baserte API-ruter blir nådd
   if (origin && !allowedOrigins.has(origin)) {
     return res.status(403).json({ message: "Nettadressen er ikke tillatt" });
   }
@@ -101,6 +103,7 @@ app.use(
     allowedHeaders: ["Content-Type"],
   }),
 );
+// JSON har en egen størrelsesgrense; filopplasting begrenses separat i de aktuelle rutene
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", async (req, res) => {

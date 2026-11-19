@@ -38,6 +38,7 @@ function useAction() {
   const [actionState, setActionState] = useState({ message: "", error: "", busy: false });
 
   async function runAction(action) {
+    // Felles tilstand gir samme tilbakemelding og hindrer dobbel innsending i sikkerhetsskjemaene
     setActionState({ message: "", error: "", busy: true });
     try {
       const message = await action();

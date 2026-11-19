@@ -2,6 +2,7 @@
 export function readCart(value) {
   if (value === null) return [];
   const items = JSON.parse(value);
+  // Kontroller format og mengder også for localStorage-data som kan være endret utenfor appen
   if (!Array.isArray(items) || items.some((item) =>
     !item || !["course", "activity"].includes(item.type) ||
     !Number.isSafeInteger(item.id) || item.id < 1 ||
@@ -10,6 +11,7 @@ export function readCart(value) {
     throw new Error("Handlekurven inneholder ugyldige data.");
   }
   const keys = items.map((item) => JSON.stringify([item.type, item.id, item.ticketName || ""]));
+  // Én linje per vare/billettype gjør oppdatering og fjerning entydig
   if (new Set(keys).size !== items.length) throw new Error("Handlekurven inneholder dupliserte varer.");
   return items;
 }
@@ -20,6 +22,7 @@ export function addCartItem(items, item) {
   const activityTotal = item.type === "activity"
     ? items.filter((entry) => entry.type === "activity" && entry.id === item.id && entry.ticketName).reduce((sum, entry) => sum + entry.quantity, item.quantity)
     : 0;
+  // Begrens både per linje og på tvers av billettyper for å beskytte samlet aktivitetstilgjengelighet
   if (quantity > 10 || (item.type === "activity" && item.ticketName && (quantity > item.available || activityTotal > item.totalAvailable))) {
     throw new Error("Antallet overstiger grensen eller tilgjengelige billetter.");
   }

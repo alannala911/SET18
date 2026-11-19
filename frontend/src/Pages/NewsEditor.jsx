@@ -36,6 +36,7 @@ export default function NewsEditor() {
     let isComponentMounted = true;
 
     async function loadNews() {
+      // Utkast og arkivert innhold lastes bare etter at administratorøkten er kontrollert
       await apiRequest("/auth/me");
       if (!isComponentMounted) return;
       setIsAdminAuthenticated(true);
@@ -72,6 +73,7 @@ export default function NewsEditor() {
 
   useEffect(() => {
     return () => {
+      // Frigjør lokale bilde-forhåndsvisninger når de byttes eller editoren lukkes
       if (imagePreviewUrl.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreviewUrl);
       }
@@ -110,6 +112,7 @@ export default function NewsEditor() {
     setFormError("");
     try {
       const formData = new FormData();
+      // Multipart-format lar nyhetstekst og eventuell bildefil sendes samlet
       formData.set("news", JSON.stringify(newsDraft));
       if (selectedImageFile) formData.set("image", selectedImageFile);
       await apiRequest(

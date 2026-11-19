@@ -4,6 +4,7 @@ export function rateLimit({
   windowMs,
   message = "For mange forespørsler. Prøv igjen senere.",
 }) {
+  // Tell per IP og tidsvindu for å begrense automatiserte og gjentatte forespørsler
   const hits = new Map();
   return (req, res, next) => {
     const now = Date.now();

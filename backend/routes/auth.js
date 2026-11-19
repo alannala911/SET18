@@ -28,6 +28,7 @@ const findAdmin = (state, email) =>
   state.admins.find((admin) => admin.email === email);
 
 function cookieOptions() {
+  // Session-ID-en er utilgjengelig for JavaScript og sendes bare med API-kall
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -51,6 +52,7 @@ export function adminSession(req) {
   const sessionTokenHash = tokenHash(token);
   const state = readStore();
   const session = state.sessions.find(
+    // Lagre og sammenlign bare hash av tokenet, og avvis utløpte økter
     (item) =>
       item.kind === "admin" &&
       item.tokenHash === sessionTokenHash &&
@@ -63,6 +65,7 @@ export function adminSession(req) {
 }
 
 export function requireAdmin(req, res, next) {
+  // Autorisasjonen skjer på serveren for hver beskyttede rute
   const session = adminSession(req);
   if (!session) return res.status(401).json({ message: "Innlogging kreves" });
   req.admin = { email: session.email, role: session.role };
@@ -83,6 +86,7 @@ function recordFailure(key) {
   }
   const current = failedLogins.get(key) || { count: 0, lockedUntil: 0 };
   current.count += 1;
+  // Midlertidig lås begrenser passordgjetting uten å låse kontoen permanent
   if (current.count >= 10) current.lockedUntil = Date.now() + 15 * 60 * 1000;
   failedLogins.set(key, current);
 }
@@ -140,6 +144,7 @@ router.post("/login", async (req, res, next) => {
     const token = createToken();
     const expiresAt = new Date(Date.now() + sessionLifetimeMs).toISOString();
     await updateStore((state) => {
+      // Utløpte økter ryddes ved innlogging, og kun tokenhash lagres i databasen
       state.sessions = state.sessions.filter(
         (session) => Date.parse(session.expiresAt) > Date.now(),
       );

@@ -87,6 +87,7 @@ function readNewsData(req, res) {
   }
 
   const imageUrl = item.imageUrl ?? "";
+  // Tillat bare lokale stier eller HTTPS-adresser; avvis protokoll-relative og stitraverserende adresser
   const validImageUrl =
     typeof imageUrl === "string" &&
     imageUrl.length <= 1000 &&
@@ -123,6 +124,7 @@ function readNewsData(req, res) {
 
 async function saveNewsImage(file) {
   if (!file) return null;
+  // Filendelsen og MIME-typen bestemmes av filinnholdet, ikke klientens filnavn eller typefelt
   const signature = imageSignatures.find((item) => item.matches(file.buffer));
   if (!signature) {
     return { error: "Last opp et gyldig PNG-, JPEG- eller WebP-bilde" };
@@ -163,6 +165,7 @@ router.get("/images/:imageName", async (req, res, next) => {
 
 router.get("/", (req, res) => {
   const items = readStore().news;
+  // Statusfiltreringen skjer også på serveren, ikke bare i visningen i nettleseren
   res.json(
     req.query.scope === "all" && adminSession(req)
       ? items
@@ -243,6 +246,7 @@ router.put("/:id", requireAdmin, parseNewsImage, async (req, res, next) => {
       return { item, previousImageStorageName };
     });
     if (!result) {
+      // En opplastet fil uten tilhørende nyhetsoppføring skal ikke bli liggende foreldreløs
       if (uploadedImage) {
         await deleteUpload(
           path.join("news-images", uploadedImage.imageStorageName),
@@ -251,6 +255,7 @@ router.put("/:id", requireAdmin, parseNewsImage, async (req, res, next) => {
       return res.status(404).json({ message: "Nyheten ble ikke funnet" });
     }
     if (uploadedImage && result.previousImageStorageName) {
+      // Behold forrige bilde dersom ingen ny fil ble sendt med forespørselen
       await deleteUpload(
         path.join("news-images", result.previousImageStorageName),
       );
@@ -268,6 +273,7 @@ router.delete("/:id", requireAdmin, async (req, res, next) => {
     const item = await updateStore((state) => {
       const existingItem = state.news.find((entry) => entry.id === newsId);
       if (!existingItem) return null;
+      // Arkivering bevarer innholdet i administratorens arkiv
       existingItem.status = "archived";
       existingItem.updatedAt = new Date().toISOString();
       recordAudit(state, req, "news.archive", {

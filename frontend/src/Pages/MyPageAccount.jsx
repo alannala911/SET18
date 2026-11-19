@@ -10,6 +10,7 @@ function LocalGroupEditor({ apiBase, currentGroup, regions, onSaved }) {
   const [chapter, setChapter] = useState(currentGroup.chapter || "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Lokallagslisten avhenger av region, så regionbytte nullstiller valgt lokallag
   const chapters = regions.find((item) => item.name === region)?.chapters || [];
 
   async function saveLocalGroup(event) {
@@ -74,6 +75,7 @@ export function Account({ title, apiBase, member, isAdmin, onMemberUpdated, loca
     setMessage("");
     setBusy(true);
     try {
+      // Personopplysninger endres via en tidsbegrenset e-postlenke i stedet for direkte i nettleseren
       const result = await apiRequest(`${apiBase}/profile/change-request`, {
         method: "POST",
         body: JSON.stringify({}),

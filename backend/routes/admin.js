@@ -90,6 +90,7 @@ function sanitizeFields(existing, input) {
         };
       }
       if (required && !visible)
+        // Et obligatorisk felt må vises, ellers kan brukeren ikke sende inn skjemaet
         return { error: `Det obligatoriske feltet ${field} må være synlig` };
       let label = current.label;
       if (Object.hasOwn(metadata, "label")) {
@@ -432,6 +433,7 @@ function buildConfig(existing, input) {
   if (configSections.error) return configSections;
   const { regions, fields, options, additionalFields, sections, customForms } =
     configSections.value;
+  // Kontaktfeltene for mindreårige kan ikke gjøres valgfrie via administratorinnstillingene
   requireMinorContactFields(fields);
 
   if (
@@ -485,6 +487,7 @@ router.get("/config", (req, res) => {
 
 router.put("/config", async (req, res, next) => {
   try {
+    // Bygg en ny, validert konfigurasjon før den lagres, så ugyldige skjemaendringer ikke delvis trer i kraft
     const result = buildConfig(readStore().config, req.body);
     if (result.error) return res.status(400).json({ message: result.error });
     await updateStore((state) => {
@@ -578,10 +581,12 @@ function filteredMembers(query) {
 
 const csvCell = (value) => {
   const text = String(value ?? "");
+  // Prefiks celler som kan tolkes som formler for å hindre kjøring når CSV åpnes i regneark
   return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
 };
 
 router.get("/members", (req, res) => {
+  // Bruk samme normaliserte sammendrag som filtre og eksport, ikke rå medlemsobjekter
   res.json({ members: filteredMembers(req.query) });
 });
 
@@ -630,6 +635,7 @@ function updateMemberRecord(state, req, memberId, changes) {
     storedMember.status = status;
   }
   if (status === "suspended") {
+    // Suspenderte medlemmer mister eksisterende innlogginger umiddelbart
     state.sessions = state.sessions.filter(
       (session) => session.memberId !== storedMember.id,
     );
@@ -722,6 +728,7 @@ function reviewStoredApplication(
         (applicantPhone && phoneDigits(memberPhone(item)) === applicantPhone),
     );
     if (member) {
+      // Knytt søknaden til eksisterende konto i stedet for å lage en duplikat
       application.memberId = member.id;
       return {
         message:
@@ -754,6 +761,7 @@ function reviewStoredApplication(
     };
   }
   member.credentialSetupTokenHash = setupTokenHash;
+  // Kun tokenhash lagres; den rå aktiveringslenken sendes tilbake til administratoren
   member.credentialSetupExpiresAt = setupExpiresAt;
   const frontendBase = (
     process.env.PUBLIC_FRONTEND_URL || "http://localhost:5173"

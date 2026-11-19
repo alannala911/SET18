@@ -177,6 +177,7 @@ function validateAgreements(form) {
 }
 
 function validateRegistration(type, form, config) {
+  // Kombiner faste regler med administratorens feltvalg; sikkerhetskrav kan likevel ikke slås av
   const issues = [];
   const specs = configurableFields[type] || [];
   const recipientAge = type === "gift" ? getAge(form.recipient?.birthDate) : null;
@@ -325,6 +326,7 @@ function CustomFormSubmission({ form }) {
     setBusy(true);
     try {
       const fileFields = form.fields.filter((field) => field.type === "file");
+      // Binærfiler sendes som multipart; øvrige verdier blir JSON med samme feltnavn
       const payload = Object.fromEntries(
         Object.entries(includeAgreements ? formValues : values).filter(([id]) => !fileFields.some((field) => field.id === id))
       );
@@ -410,9 +412,11 @@ function RegistrationForms({ type, config }) {
     setBusy(true);
     try {
       let payload = { ...form };
+      // Bekreftelsesfeltet er kun for brukerens kontroll og skal ikke lagres som profilinformasjon
       delete payload.confirmPassword;
       let body;
       if (type === "craft") {
+        // Søknad om håndverksmedlemskap kan ha vedlegg, de andre skjemaene er JSON
         const { files, ...application } = payload;
         body = new FormData();
         body.append("application", JSON.stringify(application));
@@ -792,6 +796,7 @@ function ActivationFlow({ type, config, initialToken = "" }) {
     if (!identifier.trim() || (!validEmail(identifier.trim()) && !validPhone(identifier.trim()))) return;
     setBusy(true);
     try {
+      // Kontaktopplysningen kontrolleres først; tokenet verifiseres i eget steg
       await request("/membership/activation/lookup", {
         method: "POST",
         body: JSON.stringify({ type, identifier }),
