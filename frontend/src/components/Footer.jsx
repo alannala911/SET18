@@ -21,12 +21,12 @@ function Footer() {
               className="footer-links"
               aria-label="Kontakt og sosiale medier"
             >
-              <a href="#" aria-label="Facebook">
+              <a href="https://www.facebook.com/NorgesHusflidslag?locale=nb_NO" aria-label="Facebook">
                 <img src={facebookIcon} alt="" />
                 Facebook
               </a>
 
-              <a href="#" aria-label="Instagram">
+              <a href="https://www.instagram.com/norgeshusflidslag/" aria-label="Instagram">
                 <img src={instagramIcon} alt="" />
                 Instagram
               </a>

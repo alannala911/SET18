@@ -120,11 +120,11 @@ function Sidebar() {
           className="social-links"
           aria-label="Sosiale medier"
         >
-          <a href="#" aria-label="Facebook">
+          <a href="https://www.facebook.com/NorgesHusflidslag?locale=nb_NO" aria-label="Facebook">
             <img src={facebookIcon} alt="" />
           </a>
 
-          <a href="#" aria-label="Instagram">
+          <a href="https://www.instagram.com/norgeshusflidslag/" aria-label="Instagram">
             <img src={instagramIcon} alt="" />
           </a>
         </nav>
