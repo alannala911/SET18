@@ -1,5 +1,4 @@
-/* GRUNNLEGGENDE FARGER
-   Definerer fargene og standardinnstillingene for nettsiden.*/
+/* Farger og grunnoppsett */
 
 :root {
   --red: #c6284f;
@@ -19,8 +18,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* TOPPMENY
-   Viser logoen og navigasjonslenkene øverst på siden. */
+/* Toppmeny */
 
 .topbar {
   display: flex;
@@ -47,6 +45,14 @@ body {
   font-size: 70px;
 }
 
+.brand-logo {
+  display: block;
+  width: 250px;
+  max-height: 85px;
+  object-fit: contain;
+  object-position: left center;
+}
+
 .top-links {
   display: flex;
   align-items: center;
@@ -54,31 +60,40 @@ body {
 }
 
 .top-links a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: black;
   font-size: 27px;
   text-decoration: none;
-}
-
-.cart-count {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  min-width: 1.4em;
-  height: 1.4em;
-  margin-left: -6px;
-  border-radius: 50%;
-  background: #b52d4d;
-  color: #fff;
-  font-size: 0.75em;
-  font-weight: bold;
 }
 
 .top-links a:hover {
   color: var(--red);
 }
 
-/* SIDEMENY OG HOVEDINNHOLD
-   Viser navigasjonsmenyen og innholdsområdet på siden. */
+.top-icon {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.cart-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  margin-left: -6px;
+  border-radius: 50%;
+  color: white;
+  background: #b52d4d;
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
+/* Sidemeny og hovedinnhold */
 
 .page-layout {
   display: grid;
@@ -100,10 +115,10 @@ body {
 .side-links a {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   padding: 14px 20px;
-  color: black;
   border-radius: 10px;
+  color: black;
   font-size: 25px;
   text-decoration: none;
 }
@@ -121,6 +136,38 @@ body {
 .side-links span {
   width: 35px;
   text-align: center;
+}
+
+.side-links a > span,
+.side-links a > img,
+.side-links a > svg {
+  width: 24px;
+  min-width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.menu-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.navigation-icon {
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.temporary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  font-size: 22px;
+  flex-shrink: 0;
 }
 
 .sidebar h2 {
@@ -143,21 +190,36 @@ body {
   overflow: hidden;
 }
 
-/* HOVEDBILDE
-   Viser hovedbildet med overskrift, tekst og lenke.*/
+/* Sosiale medier */
+
+.social-links {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.social-links a {
+  display: flex;
+}
+
+.social-links img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* Hovedbildet på forsiden */
 
 .hero {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-
   min-height: 375px;
   padding: 50px 65px;
-
   color: white;
   text-align: left;
-
   background:
     linear-gradient(
       90deg,
@@ -165,7 +227,6 @@ body {
       rgba(0, 0, 0, 0.05)
     ),
     url("./assets/bilder til nettsiden/hero-husflid.jpg");
-
   background-position: center;
   background-size: cover;
 }
@@ -197,13 +258,10 @@ body {
   align-items: center;
   gap: 12px;
   width: fit-content;
-
   padding: 10px 16px;
   border-radius: 8px;
-
   color: white;
   background: #c9453e;
-
   font-size: 18px;
   text-decoration: none;
 }
@@ -212,8 +270,7 @@ body {
   background: #a92f2a;
 }
 
-/* INFORMASJONSKORT
-   Viser kort med informasjon, ikoner og lenker.*/
+/* Kort på forsiden */
 
 .cards,
 .content-grid,
@@ -243,18 +300,14 @@ body {
   background: #efc8ed;
 }
 
-/* Sirklene øverst på kortene */
-
 .card > span:first-child {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 60px;
   height: 60px;
-
-  color: white;
   border-radius: 50%;
+  color: white;
   background: #c4443d;
   font-size: 27px;
 }
@@ -286,7 +339,6 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-
   color: #b50000;
   font-size: 19px;
   font-weight: bold;
@@ -305,18 +357,15 @@ body {
   color: #7c2bb3;
 }
 
-/* BUNNTEKST
-   Viser informasjon og lenker nederst på siden.*/
+/* Footer */
 
 .footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 30px;
-
   min-height: 125px;
   padding: 25px 5%;
-
   border-top: 2px solid black;
   background: #f5f5f5;
 }
@@ -326,8 +375,33 @@ body {
   text-decoration: none;
 }
 
-/* NETTBRETT
-   Tilpasser nettsidens layout og innhold til nettbrett. */
+.footer-logo {
+  display: block;
+  width: 210px;
+  max-height: 70px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.footer-links a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-links img {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+}
+
+/* Nettbrett */
 
 @media (max-width: 950px) {
   .topbar {
@@ -371,8 +445,17 @@ body {
   }
 }
 
-/* MOBIL
-  Tilpasser nettsidens layout til mindre mobilskjermer. */
+@media (max-width: 800px) {
+  .brand-logo {
+    width: 190px;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+  }
+}
+
+/* Mobil */
 
 @media (max-width: 600px) {
   .brand {
@@ -410,133 +493,4 @@ body {
     flex-direction: column;
     text-align: center;
   }
-}
-
-/* Logoen øverst */
-.brand-logo {
-  display: block;
-  width: 250px;
-  max-height: 85px;
-  object-fit: contain;
-  object-position: left center;
-}
-
-/* Lenker med ikoner */
-.top-links a,
-.side-links a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Ikoner øverst */
-.top-icon {
-  width: 25px;
-  height: 25px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-/* Ikoner i sidemenyen */
-.menu-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-/* Midlertidige symboler */
-.temporary-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  font-size: 22px;
-  flex-shrink: 0;
-}
-
-/* Facebook og Instagram i sidemenyen */
-.social-links {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-
-}
-
-.social-links a {
-  display: flex;
-}
-
-.social-links img {
-  width: 29px;
-  height: 29px;
-  object-fit: contain;
-}
-
-/* Logoen nederst */
-.footer-logo {
-  display: block;
-  width: 210px;
-  max-height: 70px;
-  object-fit: contain;
-  object-position: left center;
-}
-
-/* Lenker nederst */
-.footer-links {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.footer-links a {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.footer-links img {
-  width: 21px;
-  height: 21px;
-  object-fit: contain;
-}
-
-@media (max-width: 800px) {
-  .brand-logo {
-    width: 190px;
-  }
-
-  .top-links {
-    flex-wrap: wrap;
-  }
-
-  .footer-links {
-    flex-wrap: wrap;
-  }
-}
-.social-links img {
-  display: block;
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-}
-.navigation-icon {
-  width: 23px;
-  height: 23px;
-  flex-shrink: 0;
-  color: currentColor;
-}
-.side-links a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.side-links a > span,
-.side-links a > img,
-.side-links a > svg {
-  width: 24px;
-  min-width: 24px;
-  flex-shrink: 0;
-  text-align: center;
 }
