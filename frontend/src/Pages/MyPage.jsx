@@ -132,11 +132,17 @@ export default function MyPage() {
         body: JSON.stringify(credentials),
         headers: jsonHeaders,
       };
+      let memberLogin = null;
       try {
-        await apiRequest("/membership/login", loginOptions);
+        memberLogin = await apiRequest("/membership/login", loginOptions);
       } catch (memberLoginError) {
         // Medlemsinnlogging prøves først; bare 401 går videre til administratorinnlogging
         if (memberLoginError.status !== 401) throw memberLoginError;
+      }
+      if (memberLogin) {
+        if (memberLogin.hasAdminAccess)
+          await apiRequest("/auth/login", loginOptions);
+      } else {
         try {
           await apiRequest("/auth/login", loginOptions);
         } catch (adminLoginError) {

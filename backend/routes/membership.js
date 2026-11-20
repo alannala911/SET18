@@ -361,7 +361,8 @@ router.post(
         429,
       );
     }
-    const member = readStore().members.find(
+    const state = readStore();
+    const member = state.members.find(
       (item) => memberEmail(item) === email && item.status === "active",
     );
     const passwordIsValid =
@@ -394,7 +395,13 @@ router.post(
       });
     });
     res.cookie(memberCookieName, token, memberCookieOptions());
-    res.json({ message: "Logget inn", member: safeMember(member) });
+    res.json({
+      message: "Logget inn",
+      member: safeMember(member),
+      hasAdminAccess: state.admins.some(
+        (admin) => admin.memberId === member.id,
+      ),
+    });
   }),
 );
 
@@ -415,10 +422,13 @@ const findAccountByEmail = (state, email) =>
     (member) => memberEmail(member) === email && member.status === "active",
   );
 
-const sessionOwnedBy = (account) => (session) =>
-  session.kind === "admin"
-    ? session.email === account.email
-    : session.memberId === account.id;
+const sessionOwnedBy = (account) => {
+  const email = account.email || memberEmail(account);
+  return (session) =>
+    session.kind === "admin"
+      ? session.email === email
+      : session.memberId === account.id;
+};
 
 router.post(
   "/password/forgot",

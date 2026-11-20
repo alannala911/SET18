@@ -11,7 +11,7 @@ import {
   verifyPassword,
 } from "../lib/security.js";
 import { recordAudit } from "../lib/audit.js";
-import { adminProfile } from "../lib/members.js";
+import { adminProfile, memberEmail } from "../lib/members.js";
 import {
   changePassword,
   saveLocalGroup,
@@ -22,7 +22,6 @@ const router = express.Router();
 const cookieName = "set18_admin_session";
 const sessionLifetimeMs = 8 * 60 * 60 * 1000;
 const failedLogins = new Map();
-const minimumPasswordLength = 12;
 const dummyPasswordHash = `scrypt:${"0".repeat(32)}:${"0".repeat(128)}`;
 const findAdmin = (state, email) =>
   state.admins.find((admin) => admin.email === email);
@@ -94,7 +93,17 @@ function recordFailure(key) {
 async function verifyAdminLogin(email, password) {
   const ownerEmail = normalizeEmail(process.env.ADMIN_EMAIL);
   const ownerPassword = process.env.ADMIN_PASSWORD;
-  const stored = findAdmin(readStore(), email);
+  const state = readStore();
+  const stored = findAdmin(state, email);
+  if (stored?.memberId) {
+    const member = state.members.find(
+      (item) => item.id === stored.memberId && item.status === "active",
+    );
+    return verifyPassword(
+      password.slice(0, 200),
+      member?.passwordHash || dummyPasswordHash,
+    );
+  }
   if (stored?.passwordHash)
     return verifyPassword(password.slice(0, 200), stored.passwordHash);
   await verifyPassword(password.slice(0, 200), dummyPasswordHash);
@@ -165,7 +174,12 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-const ownAccount = (req) => (state) => findAdmin(state, req.admin.email);
+const ownAccount = (req) => (state) => {
+  const admin = findAdmin(state, req.admin.email);
+  return admin?.memberId
+    ? state.members.find((member) => member.id === admin.memberId)
+    : admin;
+};
 
 router.get("/me", requireAdmin, (req, res) => {
   res.json({
@@ -205,39 +219,37 @@ router.get("/admins", requireAdmin, (req, res) => {
 router.post("/admins", requireAdmin, async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body?.email);
-    const password = req.body?.password;
     if (!validEmail(email))
       return res.status(400).json({ message: "Oppgi en gyldig e-postadresse" });
-    if (
-      typeof password !== "string" ||
-      password.length < minimumPasswordLength ||
-      password.length > 200
-    ) {
-      return res
-        .status(400)
-        .json({
-          message: `Passordet må være mellom ${minimumPasswordLength} og 200 tegn`,
-        });
-    }
-    const passwordHash = await hashPassword(password);
     const created = await updateStore((state) => {
-      if (findAdmin(state, email)) return null;
+      if (findAdmin(state, email)) return { error: "exists" };
+      const member = state.members.find(
+        (item) =>
+          normalizeEmail(memberEmail(item)) === email &&
+          item.status === "active" &&
+          item.passwordHash,
+      );
+      if (!member) return { error: "member-not-found" };
       const admin = {
         id: randomUUID(),
         email,
         role: "admin",
-        passwordHash,
+        memberId: member.id,
         createdAt: new Date().toISOString(),
       };
       state.admins.push(admin);
       recordAudit(state, req, "admin.add", { target: email });
-      return admin;
+      return { admin };
     });
-    if (!created)
+    if (created.error === "exists")
       return res
         .status(409)
         .json({ message: "Administratoren finnes allerede" });
-    res.status(201).json(publicAdmin(created));
+    if (created.error === "member-not-found")
+      return res.status(404).json({
+        message: "Fant ingen aktiv medlemskonto med passord for e-postadressen",
+      });
+    res.status(201).json(publicAdmin(created.admin));
   } catch (error) {
     next(error);
   }
