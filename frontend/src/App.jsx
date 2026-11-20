@@ -1,3 +1,8 @@
+import Header from "./components/Header.jsx";
+import Sidebar from "./components/Sidebar.jsx";
+import Footer from "./components/Footer.jsx";
+
+
 // Konfigurerer sideruter og navigasjon for nettsiden
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -11,7 +16,7 @@ import {
 
 
 /* Sider */
-import { FiHome, FiHeart, FiUser } from "react-icons/fi";
+
 import Courses from "./Pages/Courses.jsx";
 import CourseEditor from "./Pages/CourseEditor.jsx";
 import Activities from "./Pages/Activities.jsx";
@@ -30,18 +35,6 @@ import ResetPassword from "./Pages/ResetPassword.jsx";
 import Membership, {
   MembershipAdminPage,
 } from "./Pages/Membership.jsx";
-
-/* Bilder og ikoner */
-import logoIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Logo Østfold.png";
-import activitiesIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Aktiviteter.png";
-import courseIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Kurs.png";
-import newsIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Nyheter.png";
-import municipalityIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/kommuner.png";
-import contactIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/email.png";
-import searchIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/søker.png";
-import shopIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/nettbutikk.png";
-import facebookIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/Facebook1.png";
-import instagramIcon from "./assets/bilder til nettsiden/Ikoner og Bilder/instagram1.png";
 
 import "./App.css";
 
@@ -190,171 +183,14 @@ function App() {
   return (
     <>
       {/* Toppmeny */}
-      <header className="topbar">
-        <Link className="brand" to="/">
-          <img
-            className="brand-logo"
-            src={logoIcon}
-            alt="Østfold Husflidslag"
-          />
-        </Link>
-
-        <nav
-          className="top-links"
-          aria-label="Ekstra navigasjon"
-        >
-          <Link to="/sok">
-            <img
-              className="top-icon"
-              src={searchIcon}
-              alt=""
-            />
-            Søk
-          </Link>
-
-          <Link to="/handlekurv">
-            <img
-              className="top-icon"
-              src={shopIcon}
-              alt=""
-            />
-            {count > 0 && <span className="cart-count" aria-label={`${count} varer i handlekurven`}>{count}</span>}
-            Handlekurv
-          </Link>
-
-          <Link to="/medlemskap">
-  <FiHeart className="navigation-icon" aria-hidden="true" />
-  Medlemskap
-</Link>
-
-<Link to="/min-side">
-  <FiUser className="navigation-icon" aria-hidden="true" />
-  {isAuthenticated ? "Min side" : "Logg inn"}
-</Link>
-        </nav>
+      <header>
+        <Header count={count} isAuthenticated={isAuthenticated} />
       </header>
 
       {/* Sidemeny og valgt side */}
       <section className="page-layout">
-        <aside className="sidebar">
-          <nav
-            className="side-links"
-            aria-label="Hovedmeny"
-          >
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <FiHome className="navigation-icon" aria-hidden="true" />
-              Hjem
-            </NavLink>
 
-            <NavLink
-              to="/kurs"
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <img
-                className="menu-icon"
-                src={courseIcon}
-                alt=""
-              />
-              Kurs
-            </NavLink>
-
-            <NavLink
-              to="/aktiviteter"
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <img
-                className="menu-icon"
-                src={activitiesIcon}
-                alt=""
-              />
-              Aktiviteter
-            </NavLink>
-
-            <NavLink
-              to="/nyheter"
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <img
-                className="menu-icon"
-                src={newsIcon}
-                alt=""
-              />
-              Nyheter
-            </NavLink>
-
-            <NavLink
-              to="/om-oss"
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <span
-                className="temporary-icon"
-                aria-hidden="true"
-              >
-                ●
-              </span>
-              Om oss
-            </NavLink>
-
-            <NavLink
-              to="/kommuner"
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <img
-                className="menu-icon"
-                src={municipalityIcon}
-                alt=""
-              />
-              Kommuner
-            </NavLink>
-
-            <NavLink
-              to="/kontakt"
-              className={({ isActive }) =>
-                isActive ? "active" : ""
-              }
-            >
-              <img
-                className="menu-icon"
-                src={contactIcon}
-                alt=""
-              />
-              Kontakt oss
-            </NavLink>
-          </nav>
-
-          <section className="social">
-            <h2>Følg oss</h2>
-
-            <nav
-              className="social-links"
-              aria-label="Sosiale medier"
-            >
-              <a href="#" aria-label="Facebook">
-                <img src={facebookIcon} alt="" />
-              </a>
-
-              <a href="#" aria-label="Instagram">
-                <img src={instagramIcon} alt="" />
-              </a>
-            </nav>
-          </section>
-        </aside>
+        <Sidebar />
 
         {/* Sidene og nettadressene */}
         <Routes>
@@ -467,36 +303,7 @@ function App() {
       </section>
 
       {/* Bunntekst */}
-      <footer className="footer">
-        <Link className="brand" to="/">
-          <img
-            className="footer-logo"
-            src={logoIcon}
-            alt="Østfold Husflidslag"
-          />
-        </Link>
-
-        <p>Tradisjon | Kreativitet | Fellesskap</p>
-
-        <nav
-          className="footer-links"
-          aria-label="Kontakt og sosiale medier"
-        >
-          <a href="#" aria-label="Facebook">
-            <img src={facebookIcon} alt="" />
-            Facebook
-          </a>
-
-          <a href="#" aria-label="Instagram">
-            <img src={instagramIcon} alt="" />
-            Instagram
-          </a>
-
-          <Link to="/kontakt">
-            Kontakt oss →
-          </Link>
-        </nav>
-      </footer>
+        <Footer />
     </>
   );
 }
