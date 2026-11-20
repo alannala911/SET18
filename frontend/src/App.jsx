@@ -9,7 +9,6 @@ import {
   Routes,
   Route,
   Link,
-  NavLink,
   Navigate,
 } from "react-router-dom";
 

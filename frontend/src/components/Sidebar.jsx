@@ -1,4 +1,4 @@
-import { Routes, Route, NavLink, Navigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { FiHome } from "react-icons/fi";
 import activitiesIcon from "../assets/bilder til nettsiden/Ikoner og Bilder/Aktiviteter.png";
 import courseIcon from "../assets/bilder til nettsiden/Ikoner og Bilder/Kurs.png";
