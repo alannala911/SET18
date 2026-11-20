@@ -14,6 +14,7 @@ export default function Shop({ payment = false }) {
   useEffect(() => {
     let active = true;
     Promise.all([
+      // Handlekurven reserverer ikke varer; katalogen hentes på nytt for å kontrollere aktuell status
       apiRequest("/courses", { credentials: "omit" }),
       apiRequest("/activities", { credentials: "omit" }),
       apiRequest("/membership/me").catch((sessionError) => {
@@ -66,6 +67,7 @@ export default function Shop({ payment = false }) {
     problem: "Informasjonen kunne ikke kontrolleres.",
   }));
   const total = lines.reduce((sum, line) => sum + (line.price || 0) * line.item.quantity, 0);
+  // Ikke gå videre hvis en vare er utløpt, utsolgt, utilgjengelig eller krever medlemsinnlogging
   const canProceed = items.length > 0 && catalog && !error && lines.every((line) => !line.problem);
 
   return (

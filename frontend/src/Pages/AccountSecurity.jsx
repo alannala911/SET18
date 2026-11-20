@@ -38,6 +38,7 @@ function useAction() {
   const [actionState, setActionState] = useState({ message: "", error: "", busy: false });
 
   async function runAction(action) {
+    // Felles tilstand gir samme tilbakemelding og hindrer dobbel innsending i sikkerhetsskjemaene
     setActionState({ message: "", error: "", busy: true });
     try {
       const message = await action();
@@ -167,7 +168,7 @@ export function DeleteAccount({ onDeleted }) {
 
 export function AdminAccounts() {
   const [admins, setAdmins] = useState([]);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: "" });
   const [{ message, error, busy }, runAction] = useAction();
   const loadAdmins = useCallback(
     () => apiRequest("/auth/admins").then(setAdmins).catch(() => setAdmins([])),
@@ -182,7 +183,7 @@ export function AdminAccounts() {
     event.preventDefault();
     runAction(async () => {
       await apiRequest("/auth/admins", postJson(form));
-      setForm({ email: "", password: "" });
+      setForm({ email: "" });
       await loadAdmins();
       return "Administratoren er lagt til.";
     });
@@ -211,7 +212,7 @@ export function AdminAccounts() {
       </ul>
       <form onSubmit={addAdmin}>
         <label className="membership-field">
-          <span>E-post for ny administrator *</span>
+          <span>E-post til eksisterende bruker *</span>
           <input
             type="email"
             value={form.email}
@@ -219,12 +220,9 @@ export function AdminAccounts() {
             required
           />
         </label>
-        <PasswordField
-          label="Midlertidig passord"
-          value={form.password}
-          onChange={(value) => updateField(setForm, "password", value)}
-          autoComplete="new-password"
-        />
+        <p className="membership-note">
+          Bruk e-postadressen til en aktiv medlemskonto. Passordet deres beholdes.
+        </p>
         <button className="membership-secondary" disabled={busy}>Legg til administrator</button>
       </form>
       <Feedback message={message} error={error} />

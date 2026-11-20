@@ -100,6 +100,7 @@ export default function AdminMembers() {
   ).toString();
 
   const loadMembers = useCallback(() => {
+    // Filtre sendes til API-et slik at administratorvisning og eksport kan bruke samme kriterier
     return apiRequest(`/admin/members?${queryString}`)
       .then((data) => setMembers(data.members))
       .catch((loadError) => setError(loadError.message));
@@ -113,6 +114,7 @@ export default function AdminMembers() {
     setError("");
     try {
       await apiRequest(`/admin/members/${member.id}`, {
+        // PATCH sender bare feltene administratoren endret, ikke hele medlemsprofilen
         method: "PATCH",
         body: JSON.stringify(changes),
       });

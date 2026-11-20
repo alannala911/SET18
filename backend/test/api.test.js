@@ -305,30 +305,49 @@ describe("administrator", () => {
     assert.equal(login.data.admin.role, "owner");
   });
 
-  test("administratorer kan legge til og fjerne administratorer, men ikke hovedadministratoren", async () => {
+  test("administratorer kan gi aktive medlemskontoer administratortilgang", async () => {
+    async function registerMember(email, phone) {
+      return client()("/membership/regular", {
+        method: "POST",
+        body: {
+          ...registration,
+          person: { ...registration.person, email, phone },
+        },
+      });
+    }
+
     const owner = client();
     await owner("/auth/login", { method: "POST", body: adminLogin });
+    assert.equal((await registerMember("b@test.no", "91234568")).status, 201);
     const created = await owner("/auth/admins", {
       method: "POST",
-      body: { email: "b@test.no", password: "AndreAdmin1234" },
+      body: { email: "b@test.no" },
     });
     assert.equal(created.status, 201);
 
     const second = client();
     await second("/auth/login", {
       method: "POST",
-      body: { email: "b@test.no", password: "AndreAdmin1234" },
+      body: { email: "b@test.no", password: registration.password },
     });
+    assert.equal((await second("/auth/me")).data.admin.role, "admin");
+    const memberLogin = await client()("/membership/login", {
+      method: "POST",
+      body: { email: "b@test.no", password: registration.password },
+    });
+    assert.equal(memberLogin.data.hasAdminAccess, true);
     assert.equal((await second("/auth/admins")).status, 200);
+    assert.equal((await registerMember("c@test.no", "91234569")).status, 201);
     const anotherCreated = await second("/auth/admins", {
       method: "POST",
-      body: { email: "c@test.no", password: "TredjeAdmin1234" },
+      body: { email: "c@test.no" },
     });
     assert.equal(anotherCreated.status, 201);
 
+    assert.equal((await registerMember("d@test.no", "91234570")).status, 201);
     const removableAdmin = await second("/auth/admins", {
       method: "POST",
-      body: { email: "d@test.no", password: "FjerdeAdmin1234" },
+      body: { email: "d@test.no" },
     });
     assert.equal(removableAdmin.status, 201);
     assert.equal(
@@ -349,7 +368,7 @@ describe("administrator", () => {
     const remainingAdmin = client();
     await remainingAdmin("/auth/login", {
       method: "POST",
-      body: { email: "c@test.no", password: "TredjeAdmin1234" },
+      body: { email: "c@test.no", password: registration.password },
     });
     const ownerRecord = (await remainingAdmin("/auth/admins")).data.find(
       (item) => item.role === "owner",
@@ -362,6 +381,112 @@ describe("administrator", () => {
         })
       ).status,
       404,
+    );
+    assert.equal(
+      (await owner(`/auth/admins/${anotherCreated.data.id}`, { method: "DELETE" }))
+        .status,
+      200,
+    );
+    for (const email of ["b@test.no", "c@test.no", "d@test.no"]) {
+      const memberAccount = client();
+      assert.equal(
+        (
+          await memberAccount("/membership/login", {
+            method: "POST",
+            body: { email, password: registration.password },
+          })
+        ).status,
+        200,
+      );
+      assert.equal(
+        (
+          await memberAccount("/membership/me", {
+            method: "DELETE",
+            body: { password: registration.password },
+          })
+        ).status,
+        200,
+      );
+    }
+  });
+
+  test("administratorpålogging følger medlemskontoens eksisterende passord", async () => {
+    const email = "shared-account@test.no";
+    const registered = await client()("/membership/regular", {
+      method: "POST",
+      body: {
+        ...registration,
+        person: { ...registration.person, email, phone: "91234571" },
+      },
+    });
+    assert.equal(registered.status, 201);
+
+    const owner = client();
+    await owner("/auth/login", { method: "POST", body: adminLogin });
+    const addedAdmin = await owner("/auth/admins", {
+      method: "POST",
+      body: { email },
+    });
+    assert.equal(addedAdmin.status, 201);
+
+    const member = client();
+    assert.equal(
+      (
+        await member("/membership/login", {
+          method: "POST",
+          body: { email, password: registration.password },
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await member("/membership/me/password", {
+          method: "POST",
+          body: {
+            currentPassword: registration.password,
+            newPassword: "UpdatedMemberPass123",
+          },
+        })
+      ).status,
+      200,
+    );
+
+    const admin = client();
+    assert.equal(
+      (
+        await admin("/auth/login", {
+          method: "POST",
+          body: { email, password: "UpdatedMemberPass123" },
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await client()("/auth/login", {
+          method: "POST",
+          body: { email, password: registration.password },
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await owner(`/auth/admins/${addedAdmin.data.id}`, {
+          method: "DELETE",
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await member("/membership/me", {
+          method: "DELETE",
+          body: { password: "UpdatedMemberPass123" },
+        })
+      ).status,
+      200,
     );
   });
 });

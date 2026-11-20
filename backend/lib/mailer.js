@@ -6,6 +6,7 @@ export function mailConfigured() {
 }
 
 export function frontendLink(pathAndQuery) {
+  // Bruk konfigurert frontendadresse i lenker; ikke bygg sikkerhetslenker fra forespørselens Host-header
   return `${(process.env.PUBLIC_FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "")}${pathAndQuery}`;
 }
 

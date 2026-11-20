@@ -43,6 +43,7 @@ function readContactSettings(input, res) {
   }
 
   const people = [];
+  // Stabil og unik ID lar administratorer endre kontaktpersoner uten å forveksle dem
   const ids = new Set();
   for (const person of input.people) {
     if (
@@ -139,6 +140,7 @@ router.post(
   }),
   async (req, res, next) => {
     const { name, email, topic, message, website } = req.body || {};
+    // Honeypot-feltet fanger enkle roboter; et utfylt felt får et nøytralt svar
     if (typeof website === "string" && website.trim()) {
       return res.status(201).json({ message: "Meldingen er sendt." });
     }

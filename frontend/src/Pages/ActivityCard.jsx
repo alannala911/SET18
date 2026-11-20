@@ -45,6 +45,7 @@ export function ActivityCard({ activityData, activityIndex = 0, ticketSales }) {
         <details className="activity-details">
           <summary>Les mer om aktiviteten</summary>
           {activityData.description
+            // Beskrivelsen er allerede sanitert av API-et; vanlig tekst rendres fortsatt som tekst
             ? activityData.description.includes("<")
               ? <div className="activity-description" dangerouslySetInnerHTML={{ __html: activityData.description }} />
               : <p className="activity-description">{activityData.description}</p>

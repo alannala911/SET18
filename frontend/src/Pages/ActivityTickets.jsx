@@ -13,6 +13,7 @@ export function TicketPurchase({ activity, ticketType, member }) {
   const [message, setMessage] = useState("");
   const { add, error } = useCart();
   const remaining = Math.min(
+    // Bruk strengeste av billettype- og aktivitetskapasitet som valgbar beholdning
     activity.remainingTickets?.byType[ticketType.name] ?? ticketType.quantity,
     activity.remainingTickets?.total ?? ticketType.quantity,
   );
@@ -62,6 +63,7 @@ export function ActivityParticipants({ activityId }) {
     }
 
     try {
+      // Deltakerlisten hentes først når administratoren åpner den, og API-et krever adminøkt
       const loadedParticipants = await apiRequest(`/activities/${activityId}/orders`);
       setParticipants(loadedParticipants);
     } catch (loadError) {

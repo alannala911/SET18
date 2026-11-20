@@ -78,6 +78,7 @@ function getMemberCookie(req) {
 }
 
 function safeMember(member) {
+  // Klienter får profil og gyldighet, men aldri passordhash eller interne engangstokenhash
   const {
     passwordHash,
     credentialSetupTokenHash,
@@ -124,6 +125,7 @@ export function requireMember(req, res, next) {
     return res.status(401).json({ message: "Medlemsinnlogging kreves" });
   const hashed = tokenHash(token);
   const session = readStore().sessions.find(
+    // Hash cookie-tokenet ved søk; session-ID-en alene gir ikke tilgang til medlemskontoen
     (item) =>
       item.kind === "member" &&
       item.tokenHash === hashed &&
@@ -296,6 +298,7 @@ router.post("/activation/lookup", (req, res) => {
     !validIdentifier ||
     !activationLookupTarget(readStore(), type, identifier)
   ) {
+    // Bruk samme svar for ukjent kontakt og ugyldige data for å ikke røpe medlemskap
     recordMemberLoginFailure(key);
     return responseError(
       res,
@@ -329,6 +332,7 @@ router.post("/activation/verify", (req, res) => {
       400,
     );
   }
+  // Slå opp token og kontaktopplysning sammen, slik at en gyldig lenke alene ikke aktiverer feil konto
   failedMemberLogins.delete(key);
   res.setHeader("Cache-Control", "no-store");
   if (type === "gift") {
@@ -357,7 +361,8 @@ router.post(
         429,
       );
     }
-    const member = readStore().members.find(
+    const state = readStore();
+    const member = state.members.find(
       (item) => memberEmail(item) === email && item.status === "active",
     );
     const passwordIsValid =
@@ -365,6 +370,7 @@ router.post(
       password.length >= minimumPasswordLength &&
       password.length <= 200;
     const passwordMatches = await verifyPassword(
+      // Samme passordhash-operasjon også når konto mangler reduserer forskjeller i svartid
       typeof password === "string" ? password.slice(0, 200) : "",
       member?.passwordHash || dummyPasswordHash,
     );
@@ -389,7 +395,13 @@ router.post(
       });
     });
     res.cookie(memberCookieName, token, memberCookieOptions());
-    res.json({ message: "Logget inn", member: safeMember(member) });
+    res.json({
+      message: "Logget inn",
+      member: safeMember(member),
+      hasAdminAccess: state.admins.some(
+        (admin) => admin.memberId === member.id,
+      ),
+    });
   }),
 );
 
@@ -410,10 +422,13 @@ const findAccountByEmail = (state, email) =>
     (member) => memberEmail(member) === email && member.status === "active",
   );
 
-const sessionOwnedBy = (account) => (session) =>
-  session.kind === "admin"
-    ? session.email === account.email
-    : session.memberId === account.id;
+const sessionOwnedBy = (account) => {
+  const email = account.email || memberEmail(account);
+  return (session) =>
+    session.kind === "admin"
+      ? session.email === email
+      : session.memberId === account.id;
+};
 
 router.post(
   "/password/forgot",
@@ -510,6 +525,7 @@ export async function changePassword(req, res, findAccount) {
   await updateStore((state) => {
     const account = findAccount(state);
     account.passwordHash = passwordHash;
+    // Behold gjeldende økt, men krev ny innlogging i alle andre kontoøkter etter passordbytte
     state.sessions = state.sessions.filter(
       (session) =>
         !sessionOwnedBy(account)(session) ||
@@ -1154,6 +1170,7 @@ router.post("/regular", async (req, res, next) => {
       createdAt: new Date().toISOString(),
     };
     const exists = await updateStore((state) => {
+      // Kontroller konflikt og opprettelse i samme oppdatering for å unngå doble kontoer
       if (
         memberConflict(state, emailResult.email, profile.person.phone) ||
         pendingGiftConflict(state, emailResult.email, profile.person.phone)
@@ -1237,6 +1254,8 @@ router.post("/minor", async (req, res, next) => {
     const regionError = validateRegion(groupFrom(values), "minor");
     if (regionError) return responseError(res, regionError);
     const credentialSetupToken = createToken();
+    // Mindreårige får først en konto som venter på aktivering/passordoppsett
+    // Mindreårige får først status etter foresattes bekreftelse og passordoppsett
     const member = {
       id: randomUUID(),
       type: "minor",
@@ -1263,6 +1282,7 @@ router.post("/minor", async (req, res, next) => {
       createdAt: new Date().toISOString(),
     };
     const exists = await updateStore((state) => {
+      // Konfliktsjekk og opprettelse gjøres samlet for å unngå doble medlemskontoer
       if (
         memberConflict(state, childEmail.email, values.child?.phone) ||
         pendingGiftConflict(state, childEmail.email, values.child.phone)
@@ -1677,6 +1697,7 @@ router.post("/gift/activate/:token", async (req, res, next) => {
 function validateFile(file) {
   const extension = path.extname(file.originalname).toLowerCase();
   const header = file.buffer.subarray(0, 8);
+  // Kontroller filsignatur i tillegg til filendelse; klientens MIME-type kan ikke stoles på
   if (extension === ".pdf" && header.subarray(0, 5).toString() === "%PDF-")
     return { mimeType: "application/pdf", extension };
   if (

@@ -11,6 +11,7 @@ export function RichTextEditor({ htmlContent, onHtmlContentChange }) {
   }, [htmlContent]);
 
   function runFormattingCommand(command, commandValue) {
+    // Behold fokus i det redigerbare feltet mens nettleseren formaterer den markerte teksten
     editorRef.current?.focus();
     document.execCommand(command, false, commandValue);
     onHtmlContentChange(editorRef.current?.innerHTML || "");

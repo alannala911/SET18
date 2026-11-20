@@ -177,6 +177,7 @@ function validateAgreements(form) {
 }
 
 function validateRegistration(type, form, config) {
+  // Kombiner faste regler med administratorens feltvalg; sikkerhetskrav kan likevel ikke slås av
   const issues = [];
   const specs = configurableFields[type] || [];
   const recipientAge = type === "gift" ? getAge(form.recipient?.birthDate) : null;
@@ -325,6 +326,7 @@ function CustomFormSubmission({ form }) {
     setBusy(true);
     try {
       const fileFields = form.fields.filter((field) => field.type === "file");
+      // Binærfiler sendes som multipart; øvrige verdier blir JSON med samme feltnavn
       const payload = Object.fromEntries(
         Object.entries(includeAgreements ? formValues : values).filter(([id]) => !fileFields.some((field) => field.id === id))
       );
@@ -410,9 +412,11 @@ function RegistrationForms({ type, config }) {
     setBusy(true);
     try {
       let payload = { ...form };
+      // Bekreftelsesfeltet er kun for brukerens kontroll og skal ikke lagres som profilinformasjon
       delete payload.confirmPassword;
       let body;
       if (type === "craft") {
+        // Søknad om håndverksmedlemskap kan ha vedlegg, de andre skjemaene er JSON
         const { files, ...application } = payload;
         body = new FormData();
         body.append("application", JSON.stringify(application));
@@ -529,7 +533,7 @@ function RegistrationForms({ type, config }) {
         <CheckField fieldKey="business.qualificationConfirmed" label="Jeg bekrefter at minst én ansatt i bedriften har svennebrev, tilsvarende utdanning eller høyere håndverksutdanning." checked={form.business.qualificationConfirmed} onChange={(event) => setNested("business", { qualificationConfirmed: event.target.checked })} required forceRequired forceVisible />
         {address("business.address", "Bedriftens adresse", "business.address")}
         <PersonFields title="Søkerens personinformasjon" fieldPrefix="applicant" value={form.applicant} onChange={(applicant) => setNested("applicant", applicant)} lockedFields={["email", "phone"]} />
-        <Section title="Søkerens fødselsdato og adresse">
+        <Section title="Søkerens fødselsdato">
           <Field label="Fødselsdato" fieldKey="applicant.birthDate" type="date" value={form.applicant.birthDate} onChange={(event) => setNested("applicant", { birthDate: event.target.value })} required forceRequired forceVisible />
           <p className="membership-note">Søkeren må være 18 år eller eldre.</p>
         </Section>
@@ -568,7 +572,7 @@ function RegistrationForms({ type, config }) {
               return <TextAreaField key={key} fieldKey={`jury.${key}`} label={labels[key]} value={form.jury[key]} onChange={(event) => setNested("jury", { [key]: event.target.value })} />;
             })}
           </Section>
-          <p className="membership-note">{config?.craftShippingInstructions || "Informasjon om hvor produktene skal sendes er ikke satt av administrator ennå."}</p>
+          <p className="membership-note">{config?.craftShippingInstructions || "Informasjon om hvor produktene skal sendes er ikke satt ennå."}</p>
         </>}
         <LocalGroupFields config={config} fieldPrefix="localGroup" region={form.region} chapter={form.chapter} onChange={changeGroup} optional />
         <CheckField fieldKey="criteriaAccepted" label="Jeg har forstått medlemskriteriene for Norske Husflidshåndverkere i Norges Husflidslag." checked={form.criteriaAccepted} onChange={(event) => setForm({ criteriaAccepted: event.target.checked })} required forceRequired forceVisible />
@@ -792,6 +796,7 @@ function ActivationFlow({ type, config, initialToken = "" }) {
     if (!identifier.trim() || (!validEmail(identifier.trim()) && !validPhone(identifier.trim()))) return;
     setBusy(true);
     try {
+      // Kontaktopplysningen kontrolleres først; tokenet verifiseres i eget steg
       await request("/membership/activation/lookup", {
         method: "POST",
         body: JSON.stringify({ type, identifier }),

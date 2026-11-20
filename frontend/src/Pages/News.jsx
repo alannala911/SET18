@@ -23,6 +23,7 @@ export default function News() {
     let isAdmin = false;
     let sessionErrorMessage = "";
     try {
+      // Administratorer trenger også utkast og arkiverte nyheter; besøkende får bare publiserte
       await apiRequest("/auth/me");
       isAdmin = true;
     } catch (sessionError) {

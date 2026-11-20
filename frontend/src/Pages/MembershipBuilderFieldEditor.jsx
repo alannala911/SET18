@@ -8,6 +8,7 @@ export function BuilderFieldEditor({ field, onChange, onRemove, allowFiles = tru
       <label className="membership-field">
         <span>Felttype</span>
         <select value={field.type} onChange={(event) => {
+          // Opprett standardverdier for ny type, men behold feltets identitet og etikett ved typebytte
           const next = createBuilderField(event.target.value);
           onChange({ ...next, id: field.id, label: field.label });
         }}>
