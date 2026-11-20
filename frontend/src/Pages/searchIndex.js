@@ -88,7 +88,7 @@ function fieldSection(flow, key) {
     if (key.startsWith("business.address.")) return "Bedriftens adresse";
     if (key.startsWith("business.") && key !== "business.qualificationConfirmed") return "Bedriftsinformasjon";
     if (key.startsWith("applicant.address.")) return "Søkerens adresse";
-    if (key === "applicant.birthDate") return "Søkerens fødselsdato og adresse";
+    if (key === "applicant.birthDate") return "Søkerens fødselsdato";
     if (key.startsWith("applicant.")) return "Søkerens personinformasjon";
     if (key === "craftType") return "Håndverkstype";
     if (key === "files") return "Last opp dokumentasjon";
@@ -209,7 +209,7 @@ export function buildSearchIndex({ courses = [], activities = [], news = [], con
         for (const option of field.options || []) formFields.push(["Valg", text(option)]);
       }
       if (flow === "craft" && admissionVisible && admissionChoices.includes("jury")) {
-        formFields.push(["Produktinnsending", membership.craftShippingInstructions || "Informasjon om hvor produktene skal sendes er ikke satt av administrator ennå."]);
+        formFields.push(["Produktinnsending", membership.craftShippingInstructions || "Informasjon om hvor produktene skal sendes er ikke satt ennå."]);
       }
       entries.push({ category: "Medlemskap", title: label, path: `/medlemskap?type=${encodeURIComponent(flow)}`, fields: formFields });
     }

@@ -237,6 +237,7 @@ function parseDatabaseState(payload) {
 
 function localUploadPath(storageName) {
   const filePath = path.resolve(uploadDirectory, storageName);
+  // Avvis stier utenfor opplastingsmappen før en filoperasjon utføres
   if (!filePath.startsWith(`${uploadDirectory}${path.sep}`)) {
     throw new Error("Opplastingsbanen er ugyldig");
   }
@@ -276,6 +277,7 @@ function migrateConfig(state, defaults) {
     ...state.config.fields.minor["child.email"],
     required: true,
   };
+  // Normaliser eldre konfigurasjoner ved oppstart og håndhev krav for mindreårige
   state.config.fields.minor["child.phone"] = {
     ...state.config.fields.minor["child.phone"],
     required: true,
@@ -360,6 +362,7 @@ function migrateStore(state) {
   }
 
   const defaults = createInitialState().config;
+  // Migrering gjør at data fra eldre versjoner får nye felter uten å overskrive eksisterende innhold
   migrateConfig(state, defaults);
 
   state.orders ??= [];
@@ -413,6 +416,7 @@ if (pool) {
 let pendingWrite = Promise.resolve();
 
 function enqueue(operation) {
+  // Serialiser alle endringer slik at to samtidige forespørsler ikke skriver over hverandre
   const result = pendingWrite.then(operation);
   pendingWrite = result.catch(() => {});
   return result;
@@ -440,6 +444,7 @@ export function updateStore(mutator) {
       const connection = await pool.getConnection();
       let transactionStarted = false;
       try {
+        // Lås raden og lagre tilstanden atomisk for å bevare konsistens i MySQL
         await connection.beginTransaction();
         transactionStarted = true;
         const [rows] = await connection.execute(
@@ -475,6 +480,7 @@ export function updateStore(mutator) {
 
     const result = await mutator(state);
     const nextPath = `${storePath}.next`;
+    // Skriv til midlertidig fil og gi den nytt navn for å unngå delvis JSON ved avbrudd
     await writeFile(nextPath, JSON.stringify(state, null, 2), { mode: 0o600 });
     await rename(nextPath, storePath);
     return result;

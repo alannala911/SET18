@@ -49,6 +49,7 @@ export function ActivityEditor() {
     let isComponentMounted = true;
 
     async function loadActivity() {
+      // Serveren beskytter også data for utkast og arkiv, derfor kontrolleres adminøkten først
       await apiRequest("/auth/me");
       if (!isComponentMounted) return;
 
@@ -94,6 +95,7 @@ export function ActivityEditor() {
 
   useEffect(() => {
     return () => {
+      // Blob-adresser er midlertidige nettleserressurser og må frigjøres når de ikke brukes
       if (imagePreviewUrl.startsWith("blob:")) URL.revokeObjectURL(imagePreviewUrl);
     };
   }, [imagePreviewUrl]);
@@ -136,6 +138,7 @@ export function ActivityEditor() {
   }
 
   function validateBeforeAction(reportNativeValidity = false) {
+    // Bruk samme regler ved forhåndsvisning, bekreftelse og lagring
     const validationErrors = getActivityValidationErrors({
       activityDraft,
       ticketTypes,
@@ -171,6 +174,7 @@ export function ActivityEditor() {
     setIsSubmitting(true);
     try {
       const activityFormData = new FormData();
+      // Send tekst og bilde i én forespørsel; tall og redigerbare delobjekter normaliseres først
       activityFormData.append("activity", JSON.stringify({
         ...activityDraft,
         description: descriptionHtml,

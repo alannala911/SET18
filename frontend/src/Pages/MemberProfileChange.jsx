@@ -128,6 +128,7 @@ export default function MemberProfileChange() {
 
   useEffect(() => {
     if (!token) return;
+    // Hent redigerbare felt via lenketoken; API-et avviser lenker som er utløpt eller brukt
     apiRequest(`/membership/profile/change/${encodeURIComponent(token)}`, { credentials: "same-origin", headers: { "Content-Type": "application/json" } })
       .then((data) => setProfile(data.profile))
       .catch((loadError) => setError(loadError.message))
@@ -140,6 +141,7 @@ export default function MemberProfileChange() {
     setBusy(true);
     try {
       const editableProfile = Object.fromEntries(
+        // Lokallag har egen kontroll på Min side og tas derfor ikke med i denne profillagringen
         Object.entries(profile).filter(([field]) => field !== "localGroup")
       );
       await apiRequest(`/membership/profile/change/${encodeURIComponent(token)}`, {

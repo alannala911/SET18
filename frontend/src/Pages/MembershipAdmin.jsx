@@ -19,6 +19,7 @@ function AdminPanel() {
   useEffect(() => {
     if (checkingSession || !authenticated) return undefined;
     let active = true;
+    // Hent konfigurasjon og søknader sammen, men vent med admin-data til økten er bekreftet
     Promise.all([
       request("/admin/config"),
       request("/admin/applications"),
@@ -54,6 +55,7 @@ function AdminPanel() {
             (flow === "minor" && ["child.email", "child.phone"].includes(field)))
           .map(([field]) => field),
       ]));
+      // E-post og telefon for barn er alltid påkrevd, også om administrator endrer feltoppsettet
       requiredFields.minor = [...new Set([
         ...requiredFields.minor,
         "child.email",

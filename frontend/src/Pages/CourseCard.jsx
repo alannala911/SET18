@@ -36,6 +36,7 @@ function formatCourseDate(date) {
 export function CourseCard({ course, showEditControls = false, onRemove }) {
   const { add, error } = useCart();
   const [added, setAdded] = useState(false);
+  // Redigeringskontroller vises bare når listesiden bekrefter administratorøkt og redigeringsmodus
   return (
     <article className="course-card">
       {showEditControls && (

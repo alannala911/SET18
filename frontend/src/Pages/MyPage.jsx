@@ -84,6 +84,7 @@ export default function MyPage() {
 
     async function checkSession() {
       try {
+        // Medlems- og administratorøkter er separate, så begge kontrolleres før riktig konto vises
         const [memberResult, adminResult] = await Promise.all([
           apiRequest("/membership/me", { headers: jsonHeaders }).catch((sessionError) => {
             if (sessionError.status === 401) return null;
@@ -131,10 +132,17 @@ export default function MyPage() {
         body: JSON.stringify(credentials),
         headers: jsonHeaders,
       };
+      let memberLogin = null;
       try {
-        await apiRequest("/membership/login", loginOptions);
+        memberLogin = await apiRequest("/membership/login", loginOptions);
       } catch (memberLoginError) {
+        // Medlemsinnlogging prøves først; bare 401 går videre til administratorinnlogging
         if (memberLoginError.status !== 401) throw memberLoginError;
+      }
+      if (memberLogin) {
+        if (memberLogin.hasAdminAccess)
+          await apiRequest("/auth/login", loginOptions);
+      } else {
         try {
           await apiRequest("/auth/login", loginOptions);
         } catch (adminLoginError) {

@@ -143,6 +143,7 @@ function sanitizeDescriptionToken(token) {
 }
 
 function sanitizeActivityDescription(descriptionHtml) {
+  // Tillat bare formatering som editoren trenger; øvrige elementer og attributter fjernes
   if (typeof descriptionHtml !== "string" || descriptionHtml.length > 12000) {
     return { error: "Beskrivelsen må være tekst på maksimalt 12 000 tegn" };
   }
@@ -159,6 +160,7 @@ function validateTicketTypes(
   totalCapacity,
   allowEmptyTicketTypes,
 ) {
+  // Ved redigering kan gamle aktiviteter mangle billettyper; nye aktiviteter må ha minst én
   if (
     !Array.isArray(ticketTypes) ||
     (!allowEmptyTicketTypes && ticketTypes.length < 1) ||
@@ -483,6 +485,7 @@ function updateActivityRecord(
     updatedAt: new Date().toISOString(),
   };
   if (shouldArchive(updatedActivity)) updatedActivity.status = "archived";
+  // Behold kapasitet og solgte billettyper; ellers kunne en redigering gjøre eksisterende ordre ugyldige
   const conflict = soldTicketsConflict(state, activityId, updatedActivity);
   if (conflict) return { conflict };
 
@@ -523,6 +526,7 @@ async function saveActivity(req, res, next, activityId = null) {
         : createActivityRecord(state, req, activityData, uploadedImage),
     );
     if (!result || result.conflict) {
+      // Hvis lagringen feiler etter bildeopplasting, fjernes den ubrukte filen igjen
       await removeActivityImage(uploadedImage?.imageStorageName);
       uploadedImage = null;
       if (!result)
@@ -531,6 +535,7 @@ async function saveActivity(req, res, next, activityId = null) {
     }
 
     uploadedImage = null;
+    // Først når oppdateringen er bekreftet, kan det gamle bildet fjernes trygt
     await removeActivityImage(result.previousImageStorageName);
     res.status(activityId ? 200 : 201).json(toPublicActivity(result.activity));
   } catch (error) {
@@ -540,6 +545,7 @@ async function saveActivity(req, res, next, activityId = null) {
 }
 
 router.get("/", (req, res) => {
+  // Aktivitetskort får ledige billetter beregnet fra bekreftede ordre
   const visibleActivities =
     req.query.scope === "all" && adminSession(req)
       ? readStore().activities
@@ -627,6 +633,7 @@ router.delete("/:id", requireAdmin, async (req, res, next) => {
       if (!activity) return false;
       activity.status = "archived";
       activity.updatedAt = new Date().toISOString();
+      // Arkivering avlyser gjenstående bekreftede ordre slik at kapasitet ikke reserveres videre
       confirmedOrders(applicationState, activityId).forEach((order) => {
         order.status = "cancelled";
         order.cancelledAt = activity.updatedAt;

@@ -45,6 +45,7 @@ export default function Courses() {
     let isAdmin = false;
     let sessionErrorMessage = "";
     try {
+      // Admin får også utkast/arkiv; offentlig visning henter kun publiserte kurs
       await apiRequest("/auth/me");
       isAdmin = true;
     } catch (sessionError) {
@@ -95,6 +96,7 @@ export default function Courses() {
   }, [loadCourses]);
 
   const activeCourses = courseList.filter((course) => course.status !== "archived" && (isAdminAuthenticated || course.status === "published"));
+  // Arkivet vises separat og bare i administratorvisningen
   const archivedCourses = isAdminAuthenticated ? courseList.filter((course) => course.status === "archived") : [];
   const categoryOptions = [
     ...categories,
@@ -136,6 +138,7 @@ export default function Courses() {
     setIsRemovingCourse(true);
     setCourseActionError("");
     try {
+      // DELETE-ruten arkiverer kurset; kortet oppdateres lokalt uten full omlasting
       await apiRequest(`/courses/${encodeURIComponent(coursePendingRemoval.id)}`, { method: "DELETE" });
       setCourseList((currentCourses) => currentCourses.map((course) =>
         course.id === coursePendingRemoval.id

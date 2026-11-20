@@ -7,6 +7,7 @@ const storageKey = "set18-cart-v1";
 
 function initialCart() {
   try {
+    // Valider lagrede data ved oppstart; ugyldig eller foreldet data skal ikke brukes som varer
     return { items: readCart(localStorage.getItem(storageKey)), error: "" };
   } catch {
     return { items: [], error: "Handlekurven kunne ikke leses fra nettleseren. Endringer kan ikke lagres før problemet er løst." };
@@ -17,6 +18,7 @@ export function CartProvider({ children }) {
   const [state, setState] = useState(initialCart);
   useEffect(() => {
     function sync(event) {
+      // Storage-hendelsen synkroniserer faner, siden den ikke sendes tilbake til fanen som skrev
       if (event.key !== storageKey) return;
       try {
         setState({ items: readCart(event.newValue), error: "" });
@@ -30,6 +32,7 @@ export function CartProvider({ children }) {
 
   function save(items) {
     try {
+      // Oppdater React-tilstanden først etter at nettleserens lagring faktisk lyktes
       localStorage.setItem(storageKey, JSON.stringify(items));
       setState({ items, error: "" });
       return true;

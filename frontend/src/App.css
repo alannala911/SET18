@@ -526,3 +526,17 @@ body {
   flex-shrink: 0;
   color: currentColor;
 }
+.side-links a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.side-links a > span,
+.side-links a > img,
+.side-links a > svg {
+  width: 24px;
+  min-width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+}

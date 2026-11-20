@@ -67,6 +67,7 @@ function readCourseData(req, res) {
       .json({ message: "Et eller flere kursfelt har ugyldige verdier." });
     return null;
   }
+  // Sjekk datoen etter formatkontrollen, siden datoer som 2026-02-31 ellers kan normaliseres automatisk
   const parsedDate = new Date(`${course.date}T00:00:00.000Z`);
   if (
     Number.isNaN(parsedDate.getTime()) ||
@@ -86,6 +87,7 @@ function readCourseData(req, res) {
 
 router.get("/", (req, res) => {
   const courses = readStore().courses;
+  // Bare en gyldig administratorøkt gir tilgang til utkast og arkiverte kurs
   res.json(
     req.query.scope === "all" && adminSession(req)
       ? courses
@@ -116,6 +118,7 @@ router.post("/", requireAdmin, async (req, res, next) => {
       };
       if (shouldArchive(newCourse)) newCourse.status = "archived";
       state.courses.push(newCourse);
+      // Loggen gjør administratorendringer sporbare uten å eksponere loggdata for besøkende
       recordAudit(state, req, "course.create", {
         courseId: newCourse.id,
         title: newCourse.title,
@@ -162,6 +165,7 @@ router.delete("/:id", requireAdmin, async (req, res, next) => {
     const course = await updateStore((state) => {
       const existingCourse = state.courses.find((item) => item.id === courseId);
       if (!existingCourse) return null;
+      // Behold kursdataene for arkivet i stedet for å slette historikken permanent
       existingCourse.status = "archived";
       existingCourse.updatedAt = new Date().toISOString();
       recordAudit(state, req, "course.archive", {

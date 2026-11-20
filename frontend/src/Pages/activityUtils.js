@@ -38,6 +38,7 @@ export function getDiscountedPrice(activity, ticketType, memberType) {
   const appliesToMember = discount?.memberTypes.includes(memberType);
   const isWithinDateRange = (!discount?.startDate || today >= discount.startDate) &&
     (!discount?.endDate || today <= discount.endDate);
+  // Samme prisregel brukes i kort og handlekurv; rabatt gjelder kun valgte medlemmer og datoer
   if (!appliesToMember || !isWithinDateRange) return ticketType.price;
   const discountAmount = discount.type === "percent"
     ? ticketType.price * discount.value / 100
@@ -107,6 +108,7 @@ export function getActivityImageSource(imageUrl) {
 }
 
 export function sanitizeActivityDescription(htmlContent) {
+  // Editorens HTML rendres som markup, så bare et lite sett med formateringstag slippes gjennom
   const allowedTags = new Set(["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "h2", "h3"]);
   return htmlContent.match(/<[^>]*>|[^<]+/g)?.map((htmlToken) => {
     if (!htmlToken.startsWith("<")) return htmlToken.replaceAll("&", "&amp;").replaceAll(">", "&gt;");

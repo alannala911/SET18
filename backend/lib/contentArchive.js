@@ -7,11 +7,13 @@ const osloDate = new Intl.DateTimeFormat("en-CA", {
 });
 
 export function archiveDate(now = new Date()) {
+  // Bruk lokal kalenderdato for Østfold, så arkivering ikke skifter ved UTC-midnatt
   const parts = Object.fromEntries(osloDate.formatToParts(now).map(({ type, value }) => [type, value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function shouldArchive(item, today = archiveDate()) {
+  // Bare publisert innhold arkiveres automatisk; utkast holdes uendret
   return (item.status ?? "published") === "published" &&
     typeof item.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.date) &&
     item.date < today;

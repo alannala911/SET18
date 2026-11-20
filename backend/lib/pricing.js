@@ -4,6 +4,7 @@ export function activeDiscount(
   memberType,
   today = new Date().toISOString().slice(0, 10),
 ) {
+  // Rabattregler brukes bare for valgte medlemstyper og innenfor oppgitt datoperiode
   const { discount } = activity;
   if (!discount || !discount.memberTypes.includes(memberType)) return null;
   if (
@@ -34,6 +35,7 @@ export function remainingTickets(state, activity) {
   const { ticketTypes = [], ticketCapacity = 0 } = activity;
   const orders = confirmedOrders(state, activity.id);
   const totalSold = orders.reduce((total, order) => total + order.quantity, 0);
+  // Beregn både total kapasitet og beholdning per type; begge grensene må overholdes
   const byType = Object.fromEntries(
     ticketTypes.map((ticketType) => {
       const sold = orders

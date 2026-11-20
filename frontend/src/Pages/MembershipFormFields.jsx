@@ -207,6 +207,7 @@ export function DynamicFormFields({ fields, values, onChange, validationErrors }
   const formConfig = useContext(FormConfigContext);
   const errors = validationErrors || formConfig?.validationErrors || {};
   return fields.map((field) => {
+    // Feltkomponenten velges fra serverkonfigurasjonen, så administratoropprettede skjemaer kan gjenbrukes
     if (field.type === "section") return (
       <section className="membership-section" key={field.id}>
         <h2>{field.label}</h2>

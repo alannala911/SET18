@@ -59,6 +59,7 @@ export function isOfferChannel(channel) {
 
 export function offerRecipients(members, channel) {
   const { optInField, contact } = offerChannels[channel];
+  // Send bare til aktive medlemmer som uttrykkelig har samtykket til akkurat denne kanalen
   return members
     .filter(
       (member) =>
@@ -98,6 +99,7 @@ export const membershipExpired = (member) =>
 export function renewedValidUntil(member) {
   const current = membershipValidUntil(member);
   const today = dateOnly(new Date());
+  // Forleng fra dagens dato hvis medlemskapet er utløpt; ellers fra eksisterende sluttdato
   return addOneYear(current > today ? current : today);
 }
 

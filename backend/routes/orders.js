@@ -26,6 +26,7 @@ function hasValidOrderDetails(details) {
 }
 
 function createOrder(state, member, { activityId, ticketName, quantity }) {
+  // Medlemsstatus og tilgjengelighet kontrolleres på serveren også etter kontroll i handlekurven
   if (membershipExpired(member))
     return orderError(
       "Medlemskapet er utløpt. Forny det på Min side for å kjøpe billetter.",
@@ -60,6 +61,7 @@ function createOrder(state, member, { activityId, ticketName, quantity }) {
     ticketName: ticketType.name,
     quantity,
     unitPrice,
+    // Rund totalsummen til øre for å unngå flyttallsavrunding i lagrede ordre
     totalPrice: Math.round(unitPrice * quantity * 100) / 100,
     status: "confirmed",
     createdAt: new Date().toISOString(),
@@ -71,6 +73,7 @@ function createOrder(state, member, { activityId, ticketName, quantity }) {
 router.use(requireMember);
 
 router.get("/", (req, res) => {
+  // Filtrer på innlogget medlems-ID slik at ordre aldri deles mellom kontoer
   const orders = readStore().orders.filter(
     (order) => order.memberId === req.member.id,
   );
@@ -106,6 +109,7 @@ router.delete("/:id", async (req, res, next) => {
   try {
     const result = await updateStore((state) => {
       const order = state.orders.find(
+        // Ordre-ID alene er ikke nok: medlemmet kan bare se og avbestille egne ordre
         (item) => item.id === req.params.id && item.memberId === req.member.id,
       );
       if (!order) return orderError("Bestillingen ble ikke funnet", 404);

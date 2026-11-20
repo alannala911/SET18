@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 export const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function request(path, options = {}) {
+  // Inkluder øktcookie for beskyttede medlems- og administratorruter; FormData setter sin egen grense
   const response = await fetch(`${API}${path}`, {
     credentials: "include",
     ...options,
@@ -33,6 +34,7 @@ export function useAdminSession() {
     let requestId = 0;
     function checkSession() {
       const currentRequestId = ++requestId;
+      // Ignorer gamle svar etter logout eller raskt gjentatte øktkontroller
       request("/auth/me")
         .then(() => {
           if (active && currentRequestId === requestId) {
